@@ -62,6 +62,7 @@ struct movenode_t {
  */
 struct movelist_t {
 	struct movenode_t *root;
+	struct movenode_t *end;
 	int nodes;
 };
 
@@ -80,7 +81,6 @@ int popcount(uint64_t);
 
 /* allocates and initializes struct, returns pointer to new struct */
 struct movenode_t *allocnode(void);
-
 /* inserts node with .move = uint32_t at end of list
  * struct movenode_t * may be anywhere in a linked list
  */
