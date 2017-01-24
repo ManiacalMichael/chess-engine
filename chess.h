@@ -87,6 +87,8 @@ struct board_t {
 	uint64_t bishops;
 	uint64_t knights;
 	uint64_t pawns;
+	uint64_t black_attacks;
+	uint64_t white_attacks;
 };
 
 const struct board_t START_BOARD = {
@@ -97,7 +99,9 @@ const struct board_t START_BOARD = {
 	0x8100000000000081ull,
 	0x2400000000000024ull,
 	0x4200000000000042ull,
-	0x00ff00000000ff00ull
+	0x00ff00000000ff00ull,
+	0x00ff000000000000ull,
+	0x000000000000ff00ull
 };
 
 struct position_t {
@@ -108,7 +112,7 @@ struct position_t {
 	int fiftymove;
 };
 
-const struct position_t START_POSITION {
+const struct position_t START_POSITION = {
 	{
 		0xffff00000000ffffull,
 		0xffff000000000000ull,
@@ -124,92 +128,5 @@ const struct position_t START_POSITION {
 	0
 };
 
-const uint64_t file_masks[8] = {
-	0x0101010101010101ull,
-	0x0202020202020202ull,
-	0x0404040404040404ull,
-	0x0808080808080808ull,
-	0x1010101010101010ull,
-	0x2020202020202020ull,
-	0x4040404040404040ull,
-	0x8080808080808080ull
-};
 
-const uint64_t rank_masks[8] = {
-	0x00000000000000ffull,
-	0x000000000000ff00ull,
-	0x0000000000ff0000ull,
-	0x00000000FF000000ull,
-	0x000000FF00000000ull,
-	0x0000ff0000000000ull,
-	0x00ff000000000000ull,
-	0xff00000000000000ull
-};
-
-/*
- * southwest-northeast diagonals:
- *
- * 0 0 0 0 0 0 0 0  00
- * 0 0 0 0 0 0 0 0  00
- * 0 0 0 0 0 0 0 1  80
- * 0 0 0 0 0 0 1 0  40
- * 0 0 0 0 0 1 0 0  20
- * 0 0 0 0 1 0 0 0  10
- * 0 0 0 1 0 0 0 0  08
- * 0 0 1 0 0 0 0 0  04
- * 
- * 0x0000804020100804ull
- * S_E3 -> (7 + 2) - 4 = 5
- */
-const uint64_t diagonal_masks[15] = {
-	/* Indice = (7 + rank) - file */
-	0x0000000000000080ull,
-	0x0000000000008040ull,
-	0x0000000000804020ull,
-	0x0000000080402010ull,
-	0x0000008040201008ull,
-	0x0000804020100804ull,
-	0x0080402010080402ull,
-	0x8040201008040201ull,
-	0x4020100804020100ull,
-	0x2010080402010000ull,
-	0x1008040201000000ull,
-	0x0804020100000000ull,
-	0x0402010000000000ull,
-	0x0201000000000000ull,
-	0x0100000000000000ull
-};
-
-/*
- * northwest-southeast antidiagonals:
- *
- * 0 1 0 0 0 0 0 0  02
- * 0 0 1 0 0 0 0 0  04
- * 0 0 0 1 0 0 0 0  08
- * 0 0 0 0 1 0 0 0  10
- * 0 0 0 0 0 1 0 0  20
- * 0 0 0 0 0 0 1 0  40
- * 0 0 0 0 0 0 0 1  80
- * 0 0 0 0 0 0 0 0  00
- *
- * 0x0204081020408000ull
- * S_D6 -> (5 + 3) = 8
- */
-const uint64_t antidiagonal_masks[15] = {
-	/* Indice = rank + file */
-	0x0000000000000001ull,
-	0x0000000000000102ull,
-	0x0000000000010204ull,
-	0x0000000001020408ull,
-	0x0000000102040810ull,
-	0x0000010204081020ull,
-	0x0001020408102040ull,
-	0x0102040810204080ull,
-	0x0204081020408000ull,
-	0x0408102040800000ull,
-	0x0810204080000000ull,
-	0x1020408000000000ull,
-	0x2040800000000000ull,
-	0x4080000000000000ull,
-	0x8000000000000000ull
-};
+#endif

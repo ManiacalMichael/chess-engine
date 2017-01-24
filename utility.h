@@ -50,6 +50,7 @@
 #define CAPTURES_BISHOP 0x02000000u
 #define CAPTURES_ROOK 0x04000000u
 #define CAPTURES_QUEEN 0x08000000u
+#define CAPTURED_PIECE 0x0f800000u
 #define CAUSES_CHECK 0x10000000u
 
 struct movenode_t {
@@ -62,7 +63,6 @@ struct movenode_t {
  */
 struct movelist_t {
 	struct movenode_t *root;
-	struct movenode_t *end;
 	int nodes;
 };
 
@@ -70,22 +70,27 @@ struct movelist_t {
 
 /* Bitboard utilities */
 
-/* returns the indice of a bit in a bitboard with ONLY one bit set */
+/* Returns the indice of a bit in a bitboard with ONLY one bit set */
 int bitindice(uint64_t);
-/* returns the number of set bits in a bitboard */
+
+/* Returns the number of set bits in a bitboard */
 int popcount(uint64_t);
 
 
 
 /* Movenode utilities */
 
-/* allocates and initializes struct, returns pointer to new struct */
+/* Allocates and initializes struct, returns pointer to new struct */
 struct movenode_t *allocnode(void);
-/* inserts node with .move = uint32_t at end of list
+
+/*
+ * Inserts node with .move = uint32_t at end of list
  * struct movenode_t * may be anywhere in a linked list
  */
 void add_node(struct movenode_t *, uint32_t);
-/* removes node, returns node->nxt
+
+/*
+ * Removes node, returns node->nxt
  * use like
  * p->nxt = remove_node(p->nxt);
  */
@@ -96,19 +101,25 @@ struct movenode_t *remove_node(struct movenode_t *);
 /* Movelist utilities */
 /* NOTE: movelist_t structs should not be dynamically allocated */
 
-/* deletes a movelist */
-void delete_list(struct movelist_t);
+/* Deletes a movelist */
+void delete_list(struct movelist_t *);
 
-/* converts an attack set into a list of moves(without movelist_t head) */
-struct movenode_t *serialize_to_moves(int, uint64_t, struct boardrep_t *);
+/* Converts an attack set into a list of moves(without movelist_t head) */
+/* Sets most flags but DOES NOT SET:
+ * 	- CAUSES_CHECK
+ * 	- CAPTURES_EP
+ * These should be set by movegen, which has access to the attack sets
+ * to determine check status, and the position flags for e.p. captures
+ */
+struct movenode_t *serialize_to_moves(int, uint64_t, struct board_t *);
 
-/* adds a headless movelist to a movelist */
+/* Adds a headless movelist to a movelist */
 /* e.g. cat_lists( moves, serialize_to_moves(sq, attk, board) ) */
 void cat_lists(struct movelist_t *, struct movenode_t *);
 
 
 
-/* makes a move, properly setting all the relevant flags on the position */
+/* Makes a move, properly setting all the relevant flags on the position */
 void make_move(struct position_t *, uint32_t);
 
 
