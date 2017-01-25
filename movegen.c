@@ -3,6 +3,9 @@
 #include "utility.h"
 #include "search.h"
 
+/* masks off the outer squares from the lookup key for sliding piece attacks */
+#define OUTER_SQ_MASK 0xfffffffffffffbf7ull
+
 const uint64_t file_masks[8] = {
 	0x0101010101010101ull,
 	0x0202020202020202ull,
@@ -633,20 +636,221 @@ uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
 }
 
 /* Returns attack set for bishops */
-uint64_t bishop_moves(uint64_t occupied, int sq)
+uint64_t bishop_moves(uint64_t occupied, int rank, int file)
 {
 	uint64_t r = 0ull;
-	int rank = sq / 8;
-	int file = sq % 8;
 	uint64_t diagonal = diagonal_masks[(7 + rank) - file];
 	uint64_t antidiagonal = antidiagonal_masks[rank + file];
 	/* 
 	 * Actually, shift down by 56 gives the key, but the key is then
 	 * multiplied by 8, which is the same as shifting back up by 3
 	 */
-	uint64_t key = ((diagonal & occupied) * FILL_MULTIPLIER) >> 53;
+	uint64_t key = (((diagonal & occupied) * FILL_MULTIPLIER) >> 53) & OUTER_SQ_MASK;
 	r |= (sliding_piece_attacks[key + file] * FILL_MULTIPLIER) & diagonal;
-	key = ((antidiagonal & occupied) * FILL_MULTIPLIER) >> 53;
+	key = (((antidiagonal & occupied) * FILL_MULTIPLIER) >> 53) & OUTER_SQ_MASK;
 	r |= (sliding_piece_attacks[key + file] * FILL_MULTIPLIER) & antidiagonal;
 	return r;
 }
+
+/* Returns attack set for rook */
+uint64_t rook_moves(uint64_t occupied, int rank, int file)
+{
+	uint64_t r = 0ull;
+	uint64_t key = (occupied & rank_masks[rank]) >> (8 * rank);
+	key *= 8;
+	key &= OUTER_SQ_MASK;
+	r |= sliding_attack_lookups[key + file];
+	key = ((occupied & file_masks[file]) >> file) * MAIN_DIAGONAL;
+	key >>= 53;
+	key &= OUTER_SQ_MASK;
+	r |= sliding_attack_lookups[key + file];
+	return r;
+}
+
+/* Returns attack set for queen */
+uint64_t queen_moves(uint64_t occupied, int rank, int file)
+{
+	uint64_t r = 0ull;
+	r |= bishop_moves(occupied, rank, file);
+	r |= rook_moves(occupied, rank, file);
+	return r;
+}
+
+/* 
+ * Returns check status for board.
+ * Note: although only one player can be in check at any given moment,
+ * this function will be called in movegen and will probably be given boards
+ * after illegal moves which cause both players to be in check
+ */
+uint16_t check_status(struct board_t *boardPtr)
+{
+	int bking, wking, brank, bfile, wrank, wfile;
+	uint64_t occupied = boardPtr->occupied;
+	uint64_t blackp = boardPtr->black_pieces;
+	uint64_t whitep = ~blackp;
+	uint16_t ret = 0;
+	bking = bitindice(blackp & boardPtr->kings);
+	wking = bitindice(boardPtr->kings ^ (1ull << bking));
+	brank = bking / 8;
+	bfile = bking % 8;
+	wrank = wking / 8;
+	wfile = wking % 8;
+	if (rook_moves(occupied, wrank, wfile) & (blackp & boardPtr->rooks) & (
+				blackp & boardPtr->queens)) {
+		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (bishop_moves(occupied, wrank, wfile) & (blackp & 
+				boardPtr->bishops) & (blackp & boardPtr->queens)) {
+		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (knight_attack_lookups[wking] & (blackp & boardPtr->knights)) {
+		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (pawn_captures[wking] & (blackp & boardPtr->pawns)) {
+		ret |= WHITE_CHECK;
+	}
+	test_black:
+	if (rook_moves(occupied, brank, bfile) & (whitep & boardPtr->rooks) &
+			(whitep & boardPtr->queens)) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (bishop_moves(occupied, brank, bfile) & (whitep & 
+				boardPtr->bishops) & (whitep & boardPtr->queens)) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (knight_attack_lookups[bking] & (whitep & boardPtr->knights)) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (pawn_captures[bking] & (whitep & boardPtr->pawns)) {
+		ret |= BLACK_CHECK;
+	}
+	return ret;
+}
+
+struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
+		int color, int mode, int ep)
+{
+	struct movelist_t ls = { NULL, 0 };
+	int i;
+	uint64_t unfriendly = ~friendly;
+	uint64_t pieces;
+	uint64_t attk;
+	uint64_t occupied = boardPtr->occupied;
+	uint64_t empty = ~occupied;
+	uint64_t enemy = occupied ^ friendly;
+	switch(mode) {
+		case 1:
+			pieces = boardPtr->pawns;
+			if(ep != -1)
+				enemy |= 1ull << ep;
+			break;
+		case 2:
+			pieces = boardPtr->knights;
+			break;
+		case 3:
+			pieces = boardPtr->bishops;
+			break;
+		case 4:
+			pieces = boardPtr->rooks;
+			break;
+		case 5:
+			pieces = boardPtr->queens;
+			break;
+		case 6:
+			pieces = boardPtr->kings;
+			break;
+	}
+	while (pieces != 0x0000000000000000ull) {
+		i = bitindice(pieces ^ (pieces & (pieces - 1)));
+		switch(mode) {
+			case 1:
+				attk = pawn_moves(enemy, empty, color, i);
+				break;
+			case 2:
+				attk = knight_attack_lookups[i];
+				break;
+			case 3:
+				attk = bishop_moves(occupied, i / 8, i % 8);
+				break;
+			case 4:
+				attk = rook_moves(occupied, i / 8, i % 8);
+				break;
+			case 5:
+				attk = queen_moves(occupied, i / 8, i % 8);
+				break;
+			case 6:
+				attk = king_attack_lookups[i];
+				break;
+		}
+		if((1ull << i) & friendly) {
+			attk &= unfriendly;
+			cat_lists(&ls, serialize_moves(i, attk, boardPtr);
+			color ? (boardPtr.black_attacks |= attk) :
+				(boardPtr.white_attacks |= attk);
+		} else {
+			attk &= friendly & empty;
+			color ? (boardPtr.white_attacks |= attk) :
+				(boardPtr.black_attacks |= attk);
+		}
+		pieces &= pieces - 1;
+	}
+	return ls->root;
+}
+
+struct movelist_t generate_moves(struct position_t* posPtr)
+{
+	struct movelist_t ls = { NULL, 0 };
+	struct movenode_t *p;
+	struct position_t testpos = *posPtr;
+	int color = (posPtr->flags & WHITE_TO_MOVE) ? 0 : 1;
+	int ep = (posPtr->flags & EN_PASSANT) ? (posPtr->flags & EP_SQUARE) : -1;
+	uint64_t friendly;
+	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
+	uint16_t enemy_check = color ? WHITE_CHECK : BLACK_CHECK;
+	posPtr->board.black_attacks = 0;
+	posPtr->board.white_attacks = 0;
+	friendly = color ? (board.black_pieces) : (occupied ^
+				board.black_pieces);
+	for(int i = 1; i < 6; i++)
+		cat_lists(&ls, piece_moves(&posPtr->board, friendly, color, i, ep));
+	p = ls.root;
+	while(p->nxt != NULL) {
+		make_move(testpos, p->next->move);
+		testpos.flags |= check_status(&testpos.board);
+		if(testpos.flags & friendly_check) {
+			p->nxt = remove_node(p->nxt);
+			p = p->nxt;
+			continue;
+		} else if (testpos.flags & enemy_check) {
+			p->move |= CAUSES_CHECK;
+		}
+		if (ep != -1) {
+			if ((p->move & CAPTURES_PAWN) & (((p->move & EP_SQUARE)
+							>> 1) == ep)
+				p->move |= CAPTURES_EP;
+		}
+		testpos = *posPtr;
+		ls.nodes++;
+		p = p->nxt;
+	}
+	/* test root node of list */
+	if(ls.nodes != 0) {
+		p = ls.root;
+		make_move(testpos, p->move);
+		testpos.flags |= check_status(&testpos.board);
+		if(testpos.flags & friendly_check) {
+			ls.root = p->nxt;
+		} else if (testpos.flags & enemy_check) {
+			p->move |= CAUSES_CHECK;
+		}
+		if (ep != -1) {
+			if ((p->move & CAPTURES_PAWN) & (((p->move & EP_SQUARE)
+							>> 1) == ep)
+				p->move |= CAPTURES_EP;
+		}
+	} else {
+		posPtr->flags |= GAME_OVER;
+	}
+	return ls;
+}
+

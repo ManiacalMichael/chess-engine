@@ -100,7 +100,7 @@ void delete_list(struct movelist_t *ls)
  * 	- CAUSES_CHECK
  * 	- CAPTURES_EP
  */
-struct movenode_t *serialize_to_moves(int sq, uint64_t attk, 
+struct movenode_t *serialize_moves(int sq, uint64_t attk, 
 		struct board_t *boardPtr)
 {
 	struct movenode_t *root, *p;
@@ -189,6 +189,7 @@ struct movenode_t *serialize_to_moves(int sq, uint64_t attk,
 		p = p->nxt;
 		attk &= attk - 1;
 	}
+	free(p); /* remove empty node at end of list */
 	return root;
 }
 

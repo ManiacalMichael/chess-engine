@@ -111,7 +111,7 @@ void delete_list(struct movelist_t *);
  * These should be set by movegen, which has access to the attack sets
  * to determine check status, and the position flags for e.p. captures
  */
-struct movenode_t *serialize_to_moves(int, uint64_t, struct board_t *);
+struct movenode_t *serialize_moves(int, uint64_t, struct board_t *);
 
 /* Adds a headless movelist to a movelist */
 /* e.g. cat_lists( moves, serialize_to_moves(sq, attk, board) ) */
