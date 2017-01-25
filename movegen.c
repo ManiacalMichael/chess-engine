@@ -3,8 +3,11 @@
 #include "utility.h"
 #include "search.h"
 
-/* masks off the outer squares from the lookup key for sliding piece attacks */
-#define OUTER_SQ_MASK 0xfffffffffffffbf7ull
+/* 
+ * Masks off the outer squares from the lookup key for sliding piece attacks 
+ * and garbage in the last three bits from shifting down only 53 spaces
+ */
+#define OUTER_SQ_MASK 0xfffffffffffffbf0ull
 
 const uint64_t file_masks[8] = {
 	0x0101010101010101ull,
@@ -531,7 +534,7 @@ const uint64_t pawn_movement[64] = {
 	0x10000000000000ull,
 	0x20000000000000ull,
 	0x40000000000000ull,
-	0x80000000000000ull
+	0x80000000000000ull,
 	0x0ull,
 	0x0ull,
 	0x0ull,
@@ -619,14 +622,14 @@ uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
 	if (color) {
 		/* lookup tables are written for white pawns, so shift */
 		if ((sq / 8) == 6) {
-			if (!((pawn_twosquares[sq % 8] << 24) & ~empty))
+			if (!((pawn_twosquare[sq % 8] << 24) & ~empty))
 				r |= pawn_movement[sq - 24];
 		}
 		r |= (pawn_movement[sq] >> 16) & empty;
 		r |= (pawn_captures[sq] >> 16) & enemy;
 	} else {
 		if ((sq / 8) == 1) {
-			if (!(pawn_twosquares[sq % 8] & ~empty))
+			if (!(pawn_twosquare[sq % 8] & ~empty))
 				r |= pawn_movement[sq + 8];
 		}
 		r |= pawn_movement[sq] & empty;
@@ -646,9 +649,9 @@ uint64_t bishop_moves(uint64_t occupied, int rank, int file)
 	 * multiplied by 8, which is the same as shifting back up by 3
 	 */
 	uint64_t key = (((diagonal & occupied) * FILL_MULTIPLIER) >> 53) & OUTER_SQ_MASK;
-	r |= (sliding_piece_attacks[key + file] * FILL_MULTIPLIER) & diagonal;
+	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & diagonal;
 	key = (((antidiagonal & occupied) * FILL_MULTIPLIER) >> 53) & OUTER_SQ_MASK;
-	r |= (sliding_piece_attacks[key + file] * FILL_MULTIPLIER) & antidiagonal;
+	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & antidiagonal;
 	return r;
 }
 
@@ -741,8 +744,10 @@ struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 	switch(mode) {
 		case 1:
 			pieces = boardPtr->pawns;
-			if(ep != -1)
+			if (ep != -1) {
 				enemy |= 1ull << ep;
+				boardPtr->pawns |= 1ull << ep;
+			}
 			break;
 		case 2:
 			pieces = boardPtr->knights;
@@ -764,7 +769,10 @@ struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 		i = bitindice(pieces ^ (pieces & (pieces - 1)));
 		switch(mode) {
 			case 1:
-				attk = pawn_moves(enemy, empty, color, i);
+				if ((1ull << i) & friendly)
+					attk = pawn_moves(enemy, empty, color, i);
+				else
+					attk = pawn_moves(friendly, empty, 1-color, i);
 				break;
 			case 2:
 				attk = knight_attack_lookups[i];
@@ -782,19 +790,21 @@ struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 				attk = king_attack_lookups[i];
 				break;
 		}
-		if((1ull << i) & friendly) {
+		if ((1ull << i) & friendly) {
 			attk &= unfriendly;
-			cat_lists(&ls, serialize_moves(i, attk, boardPtr);
-			color ? (boardPtr.black_attacks |= attk) :
-				(boardPtr.white_attacks |= attk);
+			cat_lists(&ls, serialize_moves(i, attk, boardPtr));
+			color ? (boardPtr->black_attacks |= attk) :
+				(boardPtr->white_attacks |= attk);
 		} else {
 			attk &= friendly & empty;
-			color ? (boardPtr.white_attacks |= attk) :
-				(boardPtr.black_attacks |= attk);
+			color ? (boardPtr->white_attacks |= attk) :
+				(boardPtr->black_attacks |= attk);
 		}
 		pieces &= pieces - 1;
 	}
-	return ls->root;
+	if (ep != -1)
+		boardPtr->pawns ^= (1ull << ep);
+	return (ls.root);
 }
 
 struct movelist_t generate_moves(struct position_t* posPtr)
@@ -809,15 +819,15 @@ struct movelist_t generate_moves(struct position_t* posPtr)
 	uint16_t enemy_check = color ? WHITE_CHECK : BLACK_CHECK;
 	posPtr->board.black_attacks = 0;
 	posPtr->board.white_attacks = 0;
-	friendly = color ? (board.black_pieces) : (occupied ^
-				board.black_pieces);
-	for(int i = 1; i < 6; i++)
+	friendly = color ? (posPtr->board.black_pieces) : (posPtr->board.occupied 
+			^ posPtr->board.black_pieces);
+	for (int i = 1; i < 6; i++)
 		cat_lists(&ls, piece_moves(&posPtr->board, friendly, color, i, ep));
 	p = ls.root;
-	while(p->nxt != NULL) {
-		make_move(testpos, p->next->move);
+	while (p->nxt != NULL) {
+		make_move(&testpos, p->nxt->move);
 		testpos.flags |= check_status(&testpos.board);
-		if(testpos.flags & friendly_check) {
+		if (testpos.flags & friendly_check) {
 			p->nxt = remove_node(p->nxt);
 			p = p->nxt;
 			continue;
@@ -826,27 +836,27 @@ struct movelist_t generate_moves(struct position_t* posPtr)
 		}
 		if (ep != -1) {
 			if ((p->move & CAPTURES_PAWN) & (((p->move & EP_SQUARE)
-							>> 1) == ep)
-				p->move |= CAPTURES_EP;
+							>> 1) == ep))
+				p->move |= EP_CAPTURE;
 		}
 		testpos = *posPtr;
 		ls.nodes++;
 		p = p->nxt;
 	}
 	/* test root node of list */
-	if(ls.nodes != 0) {
+	if (ls.nodes != 0) {
 		p = ls.root;
-		make_move(testpos, p->move);
+		make_move(&testpos, p->move);
 		testpos.flags |= check_status(&testpos.board);
-		if(testpos.flags & friendly_check) {
+		if (testpos.flags & friendly_check) {
 			ls.root = p->nxt;
 		} else if (testpos.flags & enemy_check) {
 			p->move |= CAUSES_CHECK;
 		}
 		if (ep != -1) {
 			if ((p->move & CAPTURES_PAWN) & (((p->move & EP_SQUARE)
-							>> 1) == ep)
-				p->move |= CAPTURES_EP;
+							>> 1) == ep))
+				p->move |= EP_CAPTURE;
 		}
 	} else {
 		posPtr->flags |= GAME_OVER;
