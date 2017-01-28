@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "chess.h"
-#include "utility.h"
+#include "headers/chess.h"
+#include "headers/utility.h"
 
 /*
  * Returns the indice of the ls1b in a bitboard with exactly one bit set

@@ -1,7 +1,7 @@
 #include <stdint.h>
-#include "chess.h"
-#include "utility.h"
-#include "search.h"
+#include "headers/chess.h"
+#include "headers/utility.h"
+#include "headers/search.h"
 
 /* 
  * Masks off the outer squares from the lookup key for sliding piece attacks 
@@ -743,8 +743,8 @@ struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 	struct movelist_t ls = { NULL, 0 };
 	int i;
 	uint64_t unfriendly = ~friendly;
-	uint64_t pieces;
-	uint64_t attk;
+	uint64_t pieces = 0ull;
+	uint64_t attk = 0ull;
 	uint64_t occupied = boardPtr->occupied;
 	uint64_t empty = ~occupied;
 	uint64_t enemy = occupied ^ friendly;
@@ -882,10 +882,12 @@ struct movelist_t generate_moves(struct position_t *posPtr)
 		make_move(&testpos, p->move);
 		testpos.flags |= check_status(&testpos.board);
 		if (testpos.flags & friendly_check) {
-			if (p->nxt == NULL)
+			if (p->nxt == NULL) {
 				remove_tail_node(&ls);
-			else
+				p = p->nxt;
+			} else {
 				remove_node(p);
+			}
 			testpos = *posPtr;
 			continue;
 		} else if (testpos.flags & enemy_check) {

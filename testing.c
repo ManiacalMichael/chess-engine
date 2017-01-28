@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include "chess.h"
-#include "utility.h"
-#include "search.h"
+#include "headers/chess.h"
+#include "headers/utility.h"
+#include "headers/search.h"
 
 void printpos(struct position_t);
 
