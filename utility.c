@@ -103,7 +103,7 @@ void delete_list(struct movelist_t *ls)
 struct movenode_t *serialize_moves(int sq, uint64_t attk, 
 		struct board_t *boardPtr)
 {
-	struct movenode_t *root, *p;
+	struct movenode_t *root, *p, *q;
 	uint32_t mv = 0;
 	uint32_t prmv = 0;
 	int dest = 0;
@@ -134,7 +134,8 @@ struct movenode_t *serialize_moves(int sq, uint64_t attk,
 		mv = sq;
 		/* x ^ (x & (x - 1)) = ls1b */
 		dest = bitindice(attk ^ (attk & (attk - 1)));
-		mv |= dest << 7;
+		mv |= dest << 6;
+		destboard = 1ull << dest;
 		/* captures */
 		if (boardPtr->black_pieces & destboard)
 			mv |= CAPTURES_BLACK;
@@ -186,10 +187,12 @@ struct movenode_t *serialize_moves(int sq, uint64_t attk,
 		p->move = mv;
 		p->nxt = allocnode();
 		/* advance list, reset ls1b */
+		q = p;
 		p = p->nxt;
 		attk &= attk - 1;
 	}
 	free(p); /* remove empty node at end of list */
+	q->nxt = NULL;
 	return root;
 }
 
@@ -201,6 +204,10 @@ void cat_lists(struct movelist_t *ls, struct movenode_t *headless)
 	struct movenode_t *p = ls->root;
 	if (headless == NULL)
 		return;
+	if (p == NULL) {
+		ls->root = headless;
+		return;
+	}
 	while (p->nxt != NULL)
 		p = p->nxt;
 	p->nxt = headless;
@@ -217,7 +224,7 @@ void make_move(struct position_t* posPtr, uint32_t mv)
 	int sqt = 0;
 	uint64_t sqboard = 0, destboard = 0;
 	sq = mv & START_SQUARE;
-	dest = mv & END_SQUARE;
+	dest = (mv & END_SQUARE) >> 6;
 	sqboard = 1ull << sq;
 	destboard = 1ull << dest;
 	/* set piece type */
@@ -237,11 +244,14 @@ void make_move(struct position_t* posPtr, uint32_t mv)
 		sqt += WHITE_QUEEN;
 	/* set/clear e.p. square */
 	posPtr->flags &= ~EP_SQUARE;
-	if ((sqt / 5) == 1) {
+	if ((sqt / 2) == 1) {
 		posPtr->fiftymove = 0;
-		if ((dest == (sq - 16)) || (dest == (sq + 16))) {
+		if (dest == (sq - 16)) {
 			posPtr->flags |= EN_PASSANT;
-			posPtr->flags |= dest << 1;
+			posPtr->flags |= (dest + 8) << 1;
+		} else if (dest == (sq + 16)) {
+			posPtr->flags |= EN_PASSANT;
+			posPtr->flags |= (dest - 8) << 1;
 		} else {
 			posPtr->flags &= ~EN_PASSANT;
 		}
@@ -262,7 +272,7 @@ void make_move(struct position_t* posPtr, uint32_t mv)
 	/* perform other captures */
 	} else if (mv & CAPTURE_MOVE) {
 		posPtr->fiftymove = 0;
-		boardPtr->occupied ^= 1ull << dest;
+		boardPtr->occupied ^= destboard;
 		switch (mv & CAPTURED_PIECE) {
 			case CAPTURES_PAWN:
 				boardPtr->pawns ^= destboard;
@@ -293,7 +303,7 @@ void make_move(struct position_t* posPtr, uint32_t mv)
 			boardPtr->pawns ^= sqboard;
 			boardPtr->black_pieces |= destboard;
 		} else {
-			boardPtr->pawns ^- sqboard;
+			boardPtr->pawns ^= sqboard;
 		}
 	} else {
 		switch (sqt / 2) {
@@ -327,6 +337,8 @@ void make_move(struct position_t* posPtr, uint32_t mv)
 			boardPtr->black_pieces |= destboard;
 		}
 	}
+	boardPtr->occupied ^= sqboard;
+	boardPtr->occupied ^= destboard;
 	/* if anyone still has castle rights */
 	if (posPtr->flags & BOTH_BOTH_CASTLE) {
 		/* remove castle rights */

@@ -14,9 +14,9 @@
  * Move bits:
  *
  * lower 16:
- * 0123456 	- Start square
- * 789abcd 	- End square
- * ef		- Unused
+ * 012345 	- Start square
+ * 6789ab 	- End square
+ * cdef		- Unused
  *
  * higher 16:
  * 0		- Is a castle
@@ -36,8 +36,8 @@
  * c		- Places opponent in check
  * def		- Unused
  */
-#define START_SQUARE 0x0000007fu
-#define END_SQUARE 0x00003f80u
+#define START_SQUARE 0x0000003fu
+#define END_SQUARE 0x00000fc0u
 #define CASTLE_MOVE 0x00010000u
 #define CASTLES_KINGSIDE 0x00020000u
 #define PROMO_MOVE 0x00040000u

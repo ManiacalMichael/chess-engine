@@ -30,6 +30,8 @@
 #define BLACK_KINGSIDE_CASTLE 0x0200u
 #define BLACK_QUEENSIDE_CASTLE 0x0400u
 #define BLACK_BOTH_CASTLE 0x0600u
+#define BOTH_KINGSIDE_CASTLE 0x0280u
+#define BOTH_QUEENSIDE_CASTLE 0x0500u
 #define BOTH_BOTH_CASTLE 0x0780u
 #define BLACK_CHECK 0x0800u
 #define WHITE_CHECK 0x1000u
@@ -91,12 +93,12 @@ struct board_t {
 	uint64_t white_attacks;
 };
 
-const struct board_t START_BOARD = {
+static const struct board_t START_BOARD = {
 	0xffff00000000ffffull,
 	0xffff000000000000ull,
-	0x1000000000000010ull,
+	0x1000000000000010ull,	
 	0x0800000000000008ull,
-	0x8100000000000081ull,
+	0x8100000000000081ull,	
 	0x2400000000000024ull,
 	0x4200000000000042ull,
 	0x00ff00000000ff00ull,
@@ -112,7 +114,7 @@ struct position_t {
 	int fiftymove;
 };
 
-const struct position_t START_POSITION = {
+static const struct position_t START_POSITION = { 
 	{
 		0xffff00000000ffffull,
 		0xffff000000000000ull,
@@ -122,11 +124,12 @@ const struct position_t START_POSITION = {
 		0x2400000000000024ull,
 		0x4200000000000042ull,
 		0x00ff00000000ff00ull
-	},
-	0x01e1u,
-	0,
+	},			
+	0x8780u,	
+	0,	
 	0
 };
+
 
 
 #endif
