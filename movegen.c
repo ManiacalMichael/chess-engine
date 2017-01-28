@@ -662,7 +662,7 @@ uint64_t rook_moves(uint64_t occupied, int rank, int file)
 	key &= OUTER_SQ_MASK;
 	/* processor will do 8-bit shift if no cast */
 	r |= (uint64_t)sliding_attack_lookups[key + file] << (8 * rank);
-	key = ((occupied & file_masks[file]) >> file) * MAIN_DIAGONAL;
+	key = ((occupied & file_masks[file]) >> file) * MAIN_ANTIDIAGONAL;
 	key >>= 54;
 	key &= OUTER_SQ_MASK;
 	/* but does 64-bit multiply here because of the 64-bit immediate */
@@ -691,7 +691,7 @@ uint16_t check_status(struct board_t *boardPtr)
 	int bking, wking, brank, bfile, wrank, wfile;
 	uint64_t occupied = boardPtr->occupied;
 	uint64_t blackp = boardPtr->black_pieces;
-	uint64_t whitep = ~blackp;
+	uint64_t whitep = ~blackp & boardPtr->occupied;
 	uint16_t ret = 0;
 	bking = bitindice(blackp & boardPtr->kings);
 	wking = bitindice(boardPtr->kings ^ (1ull << bking));
@@ -699,12 +699,12 @@ uint16_t check_status(struct board_t *boardPtr)
 	bfile = bking % 8;
 	wrank = wking / 8;
 	wfile = wking % 8;
-	if (rook_moves(occupied, wrank, wfile) & (blackp & boardPtr->rooks) & (
-				blackp & boardPtr->queens)) {
+	if (rook_moves(occupied, wrank, wfile) & ((blackp & boardPtr->rooks) | (
+				blackp & boardPtr->queens))) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (bishop_moves(occupied, wrank, wfile) & (blackp & 
-				boardPtr->bishops) & (blackp & boardPtr->queens)) {
+	} else if (bishop_moves(occupied, wrank, wfile) & ((blackp & 
+				boardPtr->bishops) | (blackp & boardPtr->queens))) {
 		ret |= WHITE_CHECK;
 		goto test_black;
 	} else if (knight_attack_lookups[wking] & (blackp & boardPtr->knights)) {
@@ -712,20 +712,26 @@ uint16_t check_status(struct board_t *boardPtr)
 		goto test_black;
 	} else if (pawn_captures[wking] & (blackp & boardPtr->pawns)) {
 		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (king_attack_lookups[wking] & (blackp & boardPtr->kings)) {
+		ret |= WHITE_CHECK;
 	}
 	test_black:
-	if (rook_moves(occupied, brank, bfile) & (whitep & boardPtr->rooks) &
-			(whitep & boardPtr->queens)) {
+	if (rook_moves(occupied, brank, bfile) & ((whitep & boardPtr->rooks) |
+			(whitep & boardPtr->queens))) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (bishop_moves(occupied, brank, bfile) & (whitep & 
-				boardPtr->bishops) & (whitep & boardPtr->queens)) {
+	} else if (bishop_moves(occupied, brank, bfile) & ((whitep & 
+				boardPtr->bishops) | (whitep & boardPtr->queens))) {
 		ret |= BLACK_CHECK;
 		return ret;
 	} else if (knight_attack_lookups[bking] & (whitep & boardPtr->knights)) {
 		ret |= BLACK_CHECK;
 		return ret;
 	} else if (pawn_captures[bking] & (whitep & boardPtr->pawns)) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (king_attack_lookups[bking] & (whitep & boardPtr->kings)) {
 		ret |= BLACK_CHECK;
 	}
 	return ret;
@@ -821,18 +827,26 @@ struct movenode_t *castle_moves(struct position_t *posPtr)
 		if (empty & (3ull << (kingpos + 1))) {
 			testboard.kings ^= 3ull << (kingpos + 1);
 			testboard.occupied ^= 3ull << (kingpos + 1);
+			if (color)
+				testboard.black_pieces ^= 3ull << (kingpos + 1);
 			if (!(check_status(&testboard) & friendly_check))
 				attk |= 1ull << (kingpos + 2);
 			testboard.kings ^= 3ull << (kingpos + 1);
 			testboard.occupied ^= 3ull << (kingpos + 1);
+			if (color)
+				testboard.black_pieces ^= 3ull << (kingpos + 1);
 		}
 		if (empty & (7ull << (kingpos - 1))) {
 			testboard.kings ^= 3ull << (kingpos - 1);
 			testboard.occupied ^= 3ull << (kingpos - 1);
+			if (color)
+				testboard.black_pieces ^= 3ull << (kingpos - 2);
 			if (!(check_status(&testboard) & friendly_check))
 				attk |= 1ull << (kingpos + 2);
 			testboard.kings ^= 3ull << (kingpos - 1);
 			testboard.occupied ^= 3ull << (kingpos - 1);
+			if (color)
+				testboard.black_pieces ^= 3ull << (kingpos - 2);
 		}
 	}
 	r = color ? (serialize_moves(S_E8, attk, &testboard)) :
@@ -864,12 +878,15 @@ struct movelist_t generate_moves(struct position_t *posPtr)
 		posPtr->flags |= GAME_OVER;
 		return ls;
 	}
-	while (p->nxt != NULL) {
-		make_move(&testpos, p->nxt->move);
+	while (p != NULL) {
+		make_move(&testpos, p->move);
 		testpos.flags |= check_status(&testpos.board);
 		if (testpos.flags & friendly_check) {
-			p->nxt = remove_node(p->nxt);
-			p = p->nxt;
+			if (p->nxt == NULL)
+				remove_tail_node(&ls);
+			else
+				remove_node(p);
+			testpos = *posPtr;
 			continue;
 		} else if (testpos.flags & enemy_check) {
 			p->move |= CAUSES_CHECK;
@@ -882,24 +899,6 @@ struct movelist_t generate_moves(struct position_t *posPtr)
 		testpos = *posPtr;
 		ls.nodes++;
 		p = p->nxt;
-	}
-	/* test root node of list */
-	if (ls.nodes != 0) {
-		p = ls.root;
-		make_move(&testpos, p->move);
-		testpos.flags |= check_status(&testpos.board);
-		if (testpos.flags & friendly_check) {
-			ls.root = p->nxt;
-		} else if (testpos.flags & enemy_check) {
-			p->move |= CAUSES_CHECK;
-		}
-		if (ep != -1) {
-			if ((p->move & CAPTURES_PAWN) & (((p->move & EP_SQUARE)
-							>> 1) == ep))
-				p->move |= EP_CAPTURE;
-		}
-	} else {
-		posPtr->flags |= GAME_OVER;
 	}
 	return ls;
 }

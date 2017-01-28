@@ -67,17 +67,36 @@ void add_node(struct movenode_t *p, uint32_t mv)
 }
 
 /*
- * Removes a node from list and frees memory, returns r->nxt
- * Usage:
- * 	p->nxt = remove_node(p->nxt)
+ * Removes a node from list and frees memory
  */
-struct movenode_t *remove_node(struct movenode_t *r)
+void remove_node(struct movenode_t *p)
 {
-	struct movenode_t *p = r->nxt;
-	free(r);
-	return p;
+	struct movenode_t *temp = p->nxt;
+	if (temp != NULL) {
+		p->move = p->nxt->move;
+		p->nxt = p->nxt->nxt;
+		free(temp);
+	} else {
+		free(p);
+	}
 }
 
+/* 
+ * Removes tail node of a list
+ */
+void remove_tail_node(struct movelist_t *listPtr)
+{
+	struct movenode_t *p = listPtr->root;
+	if (p->nxt == NULL) { /* Only node in list */
+		listPtr->root = NULL;
+		free(p);
+	} else {
+		while (p->nxt->nxt != NULL)
+			p = p->nxt;
+		free(p->nxt);
+		p->nxt = NULL;
+	}
+}
 
 /*
  * Frees memory for every node in a linked list
@@ -103,7 +122,7 @@ void delete_list(struct movelist_t *ls)
 struct movenode_t *serialize_moves(int sq, uint64_t attk, 
 		struct board_t *boardPtr)
 {
-	struct movenode_t *root, *p, *q;
+	struct movenode_t *root, *p, *q = NULL;
 	uint32_t mv = 0;
 	uint32_t prmv = 0;
 	int dest = 0;
@@ -153,10 +172,10 @@ struct movenode_t *serialize_moves(int sq, uint64_t attk,
 			mv |= CAPTURE_MOVE;
 		/* check for castling */
 		if ((sqt / 2) == 6) {
-			if (dest == (sq - 2)) {
+			if (dest == (sq + 2)) {
 				mv |= CASTLE_MOVE;
 				mv |= CASTLES_KINGSIDE;
-			} else if (dest == (sq + 2)) {
+			} else if (dest == (sq - 2)) {
 				mv |= CASTLE_MOVE;
 			}
 		/* check for promotions */
@@ -302,8 +321,37 @@ void make_move(struct position_t* posPtr, uint32_t mv)
 		if (sqt % 2) {
 			boardPtr->pawns ^= sqboard;
 			boardPtr->black_pieces |= destboard;
+			boardPtr->black_pieces ^= sqboard;
 		} else {
 			boardPtr->pawns ^= sqboard;
+		}
+	} else if (mv & CASTLE_MOVE) {
+		if (mv & CASTLES_KINGSIDE) {
+			boardPtr->kings ^= sqboard;
+			boardPtr->kings ^= destboard;
+			boardPtr->occupied ^= 1ull << (dest + 1);
+			boardPtr->occupied ^= 1ull << (dest - 1);
+			boardPtr->rooks ^= 1ull << (dest + 1);
+			boardPtr->rooks ^= 1ull << (dest - 1);
+			if (sqt % 2) {
+				boardPtr->black_pieces ^= sqboard;
+				boardPtr->black_pieces ^= destboard;
+				boardPtr->black_pieces ^= 1ull << (dest + 1);
+				boardPtr->black_pieces ^= 1ull << (dest - 1);
+			}
+		} else {
+			boardPtr->kings ^= sqboard;
+			boardPtr->kings ^= destboard;
+			boardPtr->occupied ^= 1ull << (dest - 2);
+			boardPtr->occupied ^= 1ull << (dest + 1);
+			boardPtr->rooks ^= 1ull << (dest - 2);
+			boardPtr->rooks ^= 1ull << (dest + 1);
+			if (sqt % 2) {
+				boardPtr->black_pieces ^= sqboard;
+				boardPtr->black_pieces ^= destboard;
+				boardPtr->black_pieces ^= 1ull << (dest - 2);
+				boardPtr->black_pieces ^= 1ull << (dest + 1);
+			}
 		}
 	} else {
 		switch (sqt / 2) {

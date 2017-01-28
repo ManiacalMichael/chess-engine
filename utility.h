@@ -91,11 +91,13 @@ void add_node(struct movenode_t *, uint32_t);
 
 /*
  * Removes node, returns node->nxt
- * use like
- * p->nxt = remove_node(p->nxt);
  */
-struct movenode_t *remove_node(struct movenode_t *);
+void remove_node(struct movenode_t *);
 
+/*
+ * Removes last node of list
+ */
+void remove_tail_node(struct movelist_t *);
 
 
 /* Movelist utilities */
