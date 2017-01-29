@@ -1,117 +1,146 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "headers/chess.h"
 #include "headers/utility.h"
 #include "headers/search.h"
+#include "headers/testpos.h"
+
+bool find_move(struct movelist_t, uint32_t);
 
 void printpos(struct position_t);
-
-const struct position_t fvb11Bg5 = {
-	{
-		0x69f366445824e3b8ull,
-		0x69f3660040000000ull,
-		0x4000000000000010ull,
-		0x0800000400000000ull,
-		0x2100000000000088ull,
-		0x0040004040000020ull,
-		0x0000220000240000ull,
-		0x00b344001800e300ull,
-		0x0010af3ba7db1847ull,
-		0x960c99aa15a00000ull
-	},
-	0x0080u,
-	22,
-	8
-};
-
-const struct position_t kvt5Qd2 = {
-	{
-		0x9ff768001814eff1ull,
-		0x9ff7680000000000ull,
-		0x1000000000000010ull,
-		0x0800000000000800ull,
-		0x8100000000000081ull,
-		0x0440000000100020ull,
-		0x0200200000040040ull,
-		0x00b748001800e700ull,
-		0x0000000000000000ull,
-		0x0000000000000000ull
-	},
-	0x0780u,
-	10,
-	3
-};
-
-const struct position_t cvl56Rb8 = {
-	{
-		0x020000001c000300ull,
-		0x0000000004000300ull,
-		0x0000000014000000ull,
-		0x0000000000000000ull,
-		0x0200000000000100ull,
-		0x0000000008000000ull,
-		0x0000000000000000ull,
-		0x0000000000000200ull,
-		0x0000000000000000ull,
-		0x0000000000000000ull
-	},
-	0x0000u,
-	112,
-	7
-};
 
 int main(void)
 {
 	struct position_t testpos = START_POSITION;
 	struct movelist_t ls;
-	struct movenode_t *p;
+	int i = 0;
+	bool moves_found = true;
+	bool noerr = true;
+	printf("%s", "Starting move generation self-check\n\n");
 	printf("%s", "Start position: \n");
 	printpos(testpos);
-	printf("%s", "Moves: \n");
+	printf("%s", "Checking moves: \n");
 	ls = generate_moves(&testpos);
-	p = ls.root;
-	while (p != NULL) {
-		make_move(&testpos, p->move);
-		printpos(testpos);
-		p = p->nxt;
-		testpos = START_POSITION;
+	while (startpos_mv[i] != 0x0) {
+		printf("%s%-15s%s%-16x%s", "Searching for move ", startpos_str[i],
+				"hex: ", startpos_mv[i], "\t");
+		if (find_move(ls, startpos_mv[i])) {
+			printf("%s", "FOUND\n");
+			i++;
+			ls.nodes--;
+		} else {
+			printf("%s", "ERROR\n");
+			moves_found = false;
+			noerr = false;
+			i++;
+			ls.nodes--;
+		}
 	}
 	testpos = fvb11Bg5;
 	printf("%s", "\nFischer v Byrne 11.Bg5\n");
 	printpos(testpos);
-	printf("%s", "Moves: \n");
+	printf("%s", "Checking moves: \n");
 	ls = generate_moves(&testpos);
-	p = ls.root;
-	while (p != NULL) {
-		make_move(&testpos, p->move);
-		printpos(testpos);
-		p = p->nxt;
-		testpos = fvb11Bg5;
+	i = 0;
+	while (fvb11Bg5_mv[i] != 0x0) {
+		printf("%s%-15s%s%-16x%s", "Searching for move ", fvb11Bg5_str[i],
+				"hex: ", fvb11Bg5_mv[i], "\t");
+		if (find_move(ls, fvb11Bg5_mv[i])) {
+			printf("%s", "FOUND\n");
+			i++;
+			ls.nodes--;
+		} else {
+			moves_found = false;
+			noerr = false;
+			printf("%s", "ERROR\n");
+			i++;
+			ls.nodes--;
+		}
 	}
 	testpos = kvt5Qd2;
 	printf("%s", "\nKasparov v Topalov 5.Qd2\n");
 	printpos(testpos);
-	printf("%s", "Moves: \n");
+	printf("%s", "Checking moves: \n");
 	ls = generate_moves(&testpos);
-	p = ls.root;
-	while (p != NULL) {
-		make_move(&testpos, p->move);
-		printpos(testpos);
-		p = p->nxt;
-		testpos = kvt5Qd2;
+	i = 0;
+	while (kvt5Qd2_mv[i] != 0x0) {
+		printf("%s%-15s%s%-16x%s", "Searching for move ", kvt5Qd2_str[i],
+				"hex: ", kvt5Qd2_mv[i], "\t");
+		if (find_move(ls, kvt5Qd2_mv[i])) {
+			printf("%s", "FOUND\n");
+			i++;
+			ls.nodes--;
+		} else {
+			moves_found = false;
+			noerr = false;
+			printf("%s", "ERROR\n");
+			i++;
+			ls.nodes--;
+		}
 	}
 	testpos = cvl56Rb8;
 	printf("%s", "\nCarlsen v Liren 56.Rb8\n");
 	printpos(testpos);
-	printf("%s", "Moves: \n");
+	printf("%s", "Checking moves: \n");
 	ls = generate_moves(&testpos);
-	p = ls.root;
-	while (p != NULL) {
-		make_move(&testpos, p->move);
-		printpos(testpos);
-		p = p->nxt;
-		testpos = cvl56Rb8;
+	i = 0;
+	while (cvl56Rb8_mv[i] != 0x0) {
+		printf("%s%-15s%s%-16x%s", "Searching for move ", cvl56Rb8_str[i],
+				"hex: ", cvl56Rb8_mv[i], "\t");
+		if (find_move(ls, cvl56Rb8_mv[i])) {
+			printf("%s", "FOUND\n");
+			i++;
+			ls.nodes--;
+		} else {
+			moves_found = false;
+			noerr = false;
+			printf("%s", "ERROR\n");
+			i++;
+			ls.nodes--;
+		}
+	}
+	testpos = lvs7Be7; 
+	printf("%s", "\nLasker v Steinitz 7...Be7\n");
+	printpos(testpos);
+	printf("%s", "Checking moves: \n");
+	ls = generate_moves(&testpos);
+	i = 0;
+	while (lvs7Be7_mv[i] != 0x0) {
+		printf("%s%-15s%s%-16x%s", "Searching for move ", lvs7Be7_str[i],
+				"hex: ", lvs7Be7_mv[i], "\t");
+		if (find_move(ls, lvs7Be7_mv[i])) {
+			printf("%s", "FOUND\n");
+			i++;
+			ls.nodes--;
+		} else {
+			moves_found = false;
+			noerr = false;
+			printf("%s", "ERROR\n");
+			i++;
+			ls.nodes--;
+		}
+	}
+	if (noerr) {
+		printf("%s", "Tests passed\n");
+	} else if (moves_found) {
+		printf("%s", "FAILED : Errors occured\n");
+	} else {
+		printf("%s", "FAILED : Not all moves were generated correctly\n");
 	}
 	return 0;
+}
+
+bool find_move(struct movelist_t ls, uint32_t mv)
+{
+	struct movenode_t *p = ls.root;
+	if (p == NULL)
+		return false;
+	while (p != NULL) {
+		if (p->move == mv)
+			return true;
+		p = p->nxt;
+	}
+	return false;
 }
 
 void printpos(struct position_t pos)
@@ -159,6 +188,7 @@ void printpos(struct position_t pos)
 		printf("%s", "|\n");
 	}
 	printf("%s", " ---------------\n");
+	/*
 	if (pos.flags & EN_PASSANT) {
 		printf("%s", "e.p. capture available on sq#");
 		printf("%d\n", (pos.flags & EP_SQUARE) >> 1);
@@ -186,5 +216,6 @@ void printpos(struct position_t pos)
 		printf("%s", "White's move\n");
 	else
 		printf("%s", "Black's move\n");
+	*/
 }
 

@@ -836,15 +836,15 @@ struct movenode_t *castle_moves(struct position_t *posPtr)
 			if (color)
 				testboard.black_pieces ^= 3ull << (kingpos + 1);
 		}
-		if (empty & (7ull << (kingpos - 1))) {
-			testboard.kings ^= 3ull << (kingpos - 1);
-			testboard.occupied ^= 3ull << (kingpos - 1);
+		if (empty & (7ull << (kingpos - 3))) {
+			testboard.kings ^= 3ull << (kingpos - 2);
+			testboard.occupied ^= 3ull << (kingpos - 2);
 			if (color)
 				testboard.black_pieces ^= 3ull << (kingpos - 2);
 			if (!(check_status(&testboard) & friendly_check))
 				attk |= 1ull << (kingpos + 2);
-			testboard.kings ^= 3ull << (kingpos - 1);
-			testboard.occupied ^= 3ull << (kingpos - 1);
+			testboard.kings ^= 3ull << (kingpos - 2);
+			testboard.occupied ^= 3ull << (kingpos - 2);
 			if (color)
 				testboard.black_pieces ^= 3ull << (kingpos - 2);
 		}
