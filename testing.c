@@ -36,6 +36,10 @@ int main(void)
 			ls.nodes--;
 		}
 	}
+	if ((100 > ls.nodes) && (ls.nodes > 0)) {
+		noerr = false;
+		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
+	}
 	testpos = fvb11Bg5;
 	printf("%s", "\nFischer v Byrne 11.Bg5\n");
 	printpos(testpos);
@@ -56,6 +60,10 @@ int main(void)
 			i++;
 			ls.nodes--;
 		}
+	}
+	if ((100 > ls.nodes) && (ls.nodes > 0)) {
+		noerr = false;
+		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
 	}
 	testpos = kvt5Qd2;
 	printf("%s", "\nKasparov v Topalov 5.Qd2\n");
@@ -78,6 +86,10 @@ int main(void)
 			ls.nodes--;
 		}
 	}
+	if ((100 > ls.nodes) && (ls.nodes > 0)) {
+		noerr = false;
+		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
+	}
 	testpos = cvl56Rb8;
 	printf("%s", "\nCarlsen v Liren 56.Rb8\n");
 	printpos(testpos);
@@ -99,6 +111,10 @@ int main(void)
 			ls.nodes--;
 		}
 	}
+	if ((100 > ls.nodes) && (ls.nodes > 0)) {
+		noerr = false;
+		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
+	}
 	testpos = lvs7Be7; 
 	printf("%s", "\nLasker v Steinitz 7...Be7\n");
 	printpos(testpos);
@@ -119,6 +135,10 @@ int main(void)
 			i++;
 			ls.nodes--;
 		}
+	}
+	if ((100 > ls.nodes) && (ls.nodes > 0)) {
+		noerr = false;
+		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
 	}
 	if (noerr) {
 		printf("%s", "Tests passed\n");

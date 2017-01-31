@@ -825,32 +825,39 @@ struct movenode_t *castle_moves(struct position_t *posPtr)
 	int kingpos = color ? S_E8 : S_E1;
 	if (posPtr->flags & BOTH_KINGSIDE_CASTLE) {
 		if (empty & (3ull << (kingpos + 1))) {
-			testboard.kings ^= 3ull << (kingpos + 1);
-			testboard.occupied ^= 3ull << (kingpos + 1);
+			testboard.kings ^= 3ull << kingpos;
+			testboard.occupied ^= 3ull << kingpos;
 			if (color)
-				testboard.black_pieces ^= 3ull << (kingpos + 1);
-			if (!(check_status(&testboard) & friendly_check))
-				attk |= 1ull << (kingpos + 2);
-			testboard.kings ^= 3ull << (kingpos + 1);
-			testboard.occupied ^= 3ull << (kingpos + 1);
-			if (color)
-				testboard.black_pieces ^= 3ull << (kingpos + 1);
-		}
-		if (empty & (7ull << (kingpos - 3))) {
-			testboard.kings ^= 3ull << (kingpos - 2);
-			testboard.occupied ^= 3ull << (kingpos - 2);
-			if (color)
-				testboard.black_pieces ^= 3ull << (kingpos - 2);
-			if (!(check_status(&testboard) & friendly_check))
-				attk |= 1ull << (kingpos + 2);
-			testboard.kings ^= 3ull << (kingpos - 2);
-			testboard.occupied ^= 3ull << (kingpos - 2);
-			if (color)
-				testboard.black_pieces ^= 3ull << (kingpos - 2);
+				testboard.black_pieces ^= 3ull << kingpos;
+			if (!(check_status(&testboard) & friendly_check)) {
+				testboard.kings ^= 3ull << (kingpos + 1);
+				testboard.occupied ^= 3ull << (kingpos + 1);
+				if (color)
+					testboard.black_pieces ^= 3ull << (kingpos + 1);
+				if (!(check_status(&testboard) & friendly_check))
+					attk |= 1ull << (kingpos + 2);
+			}
 		}
 	}
-	r = color ? (serialize_moves(S_E8, attk, &testboard)) :
-		(serialize_moves(S_E1, attk, &testboard));
+	testboard = posPtr->board;
+	if (posPtr->flags & BOTH_QUEENSIDE_CASTLE) {
+		if (empty & (7ull << (kingpos - 3))) {
+			testboard.kings ^= 3ull << (kingpos - 1);
+			testboard.occupied ^= 3ull << (kingpos - 1);
+			if (color)
+				testboard.black_pieces ^= 3ull << (kingpos - 1);
+			if (!(check_status(&testboard) & friendly_check)) {
+				testboard.kings ^= 3ull << (kingpos - 2);
+				testboard.occupied ^= 3ull << (kingpos - 2);
+				if (color)
+					testboard.black_pieces ^= 3ull << (kingpos - 2);
+				if (!(check_status(&testboard) & friendly_check))
+					attk |= 1ull << (kingpos - 2);
+			}
+		}
+	}
+	r = color ? (serialize_moves(S_E8, attk, &posPtr->board)) :
+		(serialize_moves(S_E1, attk, &posPtr->board));
 	return r;
 }
 
