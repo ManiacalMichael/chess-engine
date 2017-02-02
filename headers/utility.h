@@ -16,7 +16,7 @@
  * lower 16:
  * 012345 	- Start square
  * 6789ab 	- End square
- * cdef		- Unused
+ * cdef		- Type of piece being moved
  *
  * higher 16:
  * 0		- Is a castle
@@ -38,6 +38,7 @@
  */
 #define START_SQUARE 0x0000003fu
 #define END_SQUARE 0x00000fc0u
+#define PIECE_TYPE 0x0000f000u
 #define CASTLE_MOVE 0x00010000u
 #define CASTLES_KINGSIDE 0x00020000u
 #define PROMO_MOVE 0x00040000u

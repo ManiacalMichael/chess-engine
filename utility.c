@@ -151,6 +151,7 @@ struct movenode_t *serialize_moves(int sq, uint64_t attk,
 	/* create moves for every bit in attack set */
 	while (attk != 0x0000000000000000ull) {
 		mv = sq;
+		mv |= sqt << 12;
 		/* x ^ (x & (x - 1)) = ls1b */
 		dest = bitindice(attk ^ (attk & (attk - 1)));
 		mv |= dest << 6;
@@ -247,20 +248,7 @@ void make_move(struct position_t* posPtr, uint32_t mv)
 	sqboard = 1ull << sq;
 	destboard = 1ull << dest;
 	/* set piece type */
-	if (boardPtr->black_pieces & sqboard)
-		sqt += 1;
-	if (boardPtr->pawns & sqboard)
-		sqt += WHITE_PAWN;
-	else if (boardPtr->rooks & sqboard)
-		sqt += WHITE_ROOK;
-	else if (boardPtr->knights & sqboard)
-		sqt += WHITE_KNIGHT;
-	else if (boardPtr->bishops & sqboard)
-		sqt += WHITE_BISHOP;
-	else if (boardPtr->kings & sqboard)
-		sqt += WHITE_KING;
-	else if (boardPtr->queens & sqboard)
-		sqt += WHITE_QUEEN;
+	sqt = (mv & PIECE_TYPE) >> 12;
 	/* set/clear e.p. square */
 	posPtr->flags &= ~EP_SQUARE;
 	if ((sqt / 2) == 1) {

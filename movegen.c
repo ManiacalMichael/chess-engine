@@ -890,8 +890,8 @@ struct movelist_t generate_moves(struct position_t *posPtr)
 		testpos.flags |= check_status(&testpos.board);
 		if (testpos.flags & friendly_check) {
 			if (p->nxt == NULL) {
-				remove_tail_node(&ls);
 				p = p->nxt;
+				remove_tail_node(&ls);
 			} else {
 				remove_node(p);
 			}

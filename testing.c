@@ -9,145 +9,47 @@ bool find_move(struct movelist_t, uint32_t);
 
 void printpos(struct position_t);
 
+unsigned long long perft(struct position_t, int);
+
 int main(void)
 {
-	struct position_t testpos = START_POSITION;
-	struct movelist_t ls;
-	int i = 0;
-	bool moves_found = true;
-	bool noerr = true;
-	printf("%s", "Starting move generation self-check\n\n");
-	printf("%s", "Start position: \n");
-	printpos(testpos);
-	printf("%s", "Checking moves: \n");
-	ls = generate_moves(&testpos);
-	while (startpos_mv[i] != 0x0) {
-		printf("%s%-15s%s%-16x%s", "Searching for move ", startpos_str[i],
-				"hex: ", startpos_mv[i], "\t");
-		if (find_move(ls, startpos_mv[i])) {
-			printf("%s", "FOUND\n");
-			i++;
-			ls.nodes--;
-		} else {
-			printf("%s", "ERROR\n");
-			moves_found = false;
-			noerr = false;
-			i++;
-			ls.nodes--;
-		}
-	}
-	if ((100 > ls.nodes) && (ls.nodes > 0)) {
-		noerr = false;
-		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
-	}
-	testpos = fvb11Bg5;
-	printf("%s", "\nFischer v Byrne 11.Bg5\n");
-	printpos(testpos);
-	printf("%s", "Checking moves: \n");
-	ls = generate_moves(&testpos);
-	i = 0;
-	while (fvb11Bg5_mv[i] != 0x0) {
-		printf("%s%-15s%s%-16x%s", "Searching for move ", fvb11Bg5_str[i],
-				"hex: ", fvb11Bg5_mv[i], "\t");
-		if (find_move(ls, fvb11Bg5_mv[i])) {
-			printf("%s", "FOUND\n");
-			i++;
-			ls.nodes--;
-		} else {
-			moves_found = false;
-			noerr = false;
-			printf("%s", "ERROR\n");
-			i++;
-			ls.nodes--;
-		}
-	}
-	if ((100 > ls.nodes) && (ls.nodes > 0)) {
-		noerr = false;
-		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
-	}
-	testpos = kvt5Qd2;
-	printf("%s", "\nKasparov v Topalov 5.Qd2\n");
-	printpos(testpos);
-	printf("%s", "Checking moves: \n");
-	ls = generate_moves(&testpos);
-	i = 0;
-	while (kvt5Qd2_mv[i] != 0x0) {
-		printf("%s%-15s%s%-16x%s", "Searching for move ", kvt5Qd2_str[i],
-				"hex: ", kvt5Qd2_mv[i], "\t");
-		if (find_move(ls, kvt5Qd2_mv[i])) {
-			printf("%s", "FOUND\n");
-			i++;
-			ls.nodes--;
-		} else {
-			moves_found = false;
-			noerr = false;
-			printf("%s", "ERROR\n");
-			i++;
-			ls.nodes--;
-		}
-	}
-	if ((100 > ls.nodes) && (ls.nodes > 0)) {
-		noerr = false;
-		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
-	}
-	testpos = cvl56Rb8;
-	printf("%s", "\nCarlsen v Liren 56.Rb8\n");
-	printpos(testpos);
-	printf("%s", "Checking moves: \n");
-	ls = generate_moves(&testpos);
-	i = 0;
-	while (cvl56Rb8_mv[i] != 0x0) {
-		printf("%s%-15s%s%-16x%s", "Searching for move ", cvl56Rb8_str[i],
-				"hex: ", cvl56Rb8_mv[i], "\t");
-		if (find_move(ls, cvl56Rb8_mv[i])) {
-			printf("%s", "FOUND\n");
-			i++;
-			ls.nodes--;
-		} else {
-			moves_found = false;
-			noerr = false;
-			printf("%s", "ERROR\n");
-			i++;
-			ls.nodes--;
-		}
-	}
-	if ((100 > ls.nodes) && (ls.nodes > 0)) {
-		noerr = false;
-		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
-	}
-	testpos = lvs7Be7; 
-	printf("%s", "\nLasker v Steinitz 7...Be7\n");
-	printpos(testpos);
-	printf("%s", "Checking moves: \n");
-	ls = generate_moves(&testpos);
-	i = 0;
-	while (lvs7Be7_mv[i] != 0x0) {
-		printf("%s%-15s%s%-16x%s", "Searching for move ", lvs7Be7_str[i],
-				"hex: ", lvs7Be7_mv[i], "\t");
-		if (find_move(ls, lvs7Be7_mv[i])) {
-			printf("%s", "FOUND\n");
-			i++;
-			ls.nodes--;
-		} else {
-			moves_found = false;
-			noerr = false;
-			printf("%s", "ERROR\n");
-			i++;
-			ls.nodes--;
-		}
-	}
-	if ((100 > ls.nodes) && (ls.nodes > 0)) {
-		noerr = false;
-		printf("%s%d%s", "ERROR: ", ls.nodes, " additional moves were generated\n");
-	}
-	if (noerr) {
-		printf("%s", "Tests passed\n");
-	} else if (moves_found) {
-		printf("%s", "FAILED : Errors occured\n");
-	} else {
-		printf("%s", "FAILED : Not all moves were generated correctly\n");
-	}
+	printf("Starting perft tests\n");
+	printf("Start position:\n");
+	printf("%s%d%s", "Perft(2): Expected 400 Actual ", 
+			perft(START_POSITION, 2), "\n");
+	printf("%s%d%s", "Perft(3): Expected 8092 Actual ", 
+			perft(START_POSITION, 3), "\n");
+	printf("%s%d%s", "Perft(4): Expected 197281 Actual ", 
+			perft(START_POSITION, 4), "\n");
+	printf("Test position 1\n");
+	printpos(perft1);
+	printf("%s%d%s", "Perft(2): Expected 2039 Actual ",
+			perft(perft1, 2), "\n");
+	printf("%s%d%s", "Perft(3): Expected 97862 Actual ",
+			perft(perft1, 3), "\n");
+	printf("%s%d%s", "Perft(4): Expected 4085603 Actual ",
+			perft(perft1, 4), "\n");
 	return 0;
+}
+
+unsigned long long perft(struct position_t pos, int depth)
+{
+	struct movelist_t ls = generate_moves(&pos);
+	struct movenode_t *p = ls.root;
+	struct position_t testpos = pos;
+	int r = 0;
+	if (depth == 0) {
+		delete_list(&ls);
+		return 1;
+	}
+	while (p != NULL) {
+		make_move(&testpos, p->move);
+		r += perft(testpos, depth - 1);
+		testpos = pos;
+		p = p->nxt;
+	}
+	delete_list(&ls);
+	return r;
 }
 
 bool find_move(struct movelist_t ls, uint32_t mv)
