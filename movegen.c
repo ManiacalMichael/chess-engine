@@ -9,184 +9,6 @@
  */
 #define OUTER_SQ_MASK 0x00000000000001f8ull
 
-const uint64_t file_masks[8] = {
-	0x0101010101010101ull,
-	0x0202020202020202ull,
-	0x0404040404040404ull,
-	0x0808080808080808ull,
-	0x1010101010101010ull,
-	0x2020202020202020ull,
-	0x4040404040404040ull,
-	0x8080808080808080ull
-};
-
-const uint64_t rank_masks[8] = {
-	0x00000000000000ffull,
-	0x000000000000ff00ull,
-	0x0000000000ff0000ull,
-	0x00000000FF000000ull,
-	0x000000FF00000000ull,
-	0x0000ff0000000000ull,
-	0x00ff000000000000ull,
-	0xff00000000000000ull
-};
-
-/*
- * southwest-northeast diagonals:
- *
- * 0 0 0 0 0 0 0 0  00
- * 0 0 0 0 0 0 0 0  00
- * 0 0 0 0 0 0 0 1  80
- * 0 0 0 0 0 0 1 0  40
- * 0 0 0 0 0 1 0 0  20
- * 0 0 0 0 1 0 0 0  10
- * 0 0 0 1 0 0 0 0  08
- * 0 0 1 0 0 0 0 0  04
- * 
- * 0x0000804020100804ull
- * S_E3 -> (7 + 2) - 4 = 5
- */
-const uint64_t diagonal_masks[15] = {
-	/* Indice = (7 + rank) - file */
-	0x0000000000000080ull,
-	0x0000000000008040ull,
-	0x0000000000804020ull,
-	0x0000000080402010ull,
-	0x0000008040201008ull,
-	0x0000804020100804ull,
-	0x0080402010080402ull,
-	0x8040201008040201ull,
-	0x4020100804020100ull,
-	0x2010080402010000ull,
-	0x1008040201000000ull,
-	0x0804020100000000ull,
-	0x0402010000000000ull,
-	0x0201000000000000ull,
-	0x0100000000000000ull
-};
-
-/*
- * northwest-southeast antidiagonals:
- *
- * 0 1 0 0 0 0 0 0  02
- * 0 0 1 0 0 0 0 0  04
- * 0 0 0 1 0 0 0 0  08
- * 0 0 0 0 1 0 0 0  10
- * 0 0 0 0 0 1 0 0  20
- * 0 0 0 0 0 0 1 0  40
- * 0 0 0 0 0 0 0 1  80
- * 0 0 0 0 0 0 0 0  00
- *
- * 0x0204081020408000ull
- * S_D6 -> (5 + 3) = 8
- */
-const uint64_t antidiagonal_masks[15] = {
-	/* Indice = rank + file */
-	0x0000000000000001ull,
-	0x0000000000000102ull,
-	0x0000000000010204ull,
-	0x0000000001020408ull,
-	0x0000000102040810ull,
-	0x0000010204081020ull,
-	0x0001020408102040ull,
-	0x0102040810204080ull,
-	0x0204081020408000ull,
-	0x0408102040800000ull,
-	0x0810204080000000ull,
-	0x1020408000000000ull,
-	0x2040800000000000ull,
-	0x4080000000000000ull,
-	0x8000000000000000ull
-};
-
-/*
- * Sliding attack lookups:
- *  Attacks along any rank, file, or diagonal can be visualized as an
- *  attack along the back rank:
- * 0 0 0 0 0 0 0 a
- * 0 0 0 0 0 0 0 b
- * 0 0 0 0 0 0 0 c
- * 0 0 0 0 0 0 0 d
- * 0 0 0 0 0 0 0 e
- * 0 0 0 0 0 0 0  <- Rook
- * 0 0 0 0 0 0 0 g
- * 0 0 0 0 0 0 0 h
- *
- * 	=
- * 	     |
- * a b c d e   g h
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 ...
- *
- * What squares on the back rank are attacked depends on where the rook is
- * on the rank and what the occupancy of that rank is:
- * Occupancy :
- * 0 1 0 0 0 1 0 0
- *           R
- *      =
- * 0 1 1 1 1 0 1 1	<- Attack set
- *
- * So instead of calculating the attack set every time, it can be
- * generated before hand as an array of 8bit values indexed by:
- * [position_on_rank][occupancy_of_rank]
- * 8 * 256 = 2048 bytes
- *
- * This can be further reduced because the occupancy of the 0 and 7 squares
- * is irrelevant; whether or not they are attacked depends purely on the
- * occupancy of the other six squares and the position of the attacker:
- *
- * 1 0 0 1 0 1 0 0
- *       R
- *    =
- * 1 1 1 0 1 1 0 0	<- Attack set
- *
- * AND
- *
- * 0 0 0 1 0 1 0 1
- *       R
- *    =
- * 1 1 1 0 1 1 0 0	<- Attack set
- *
- * By only considering the occupancy of the center squares we can reduce
- * the size of the lookup table fourfold:
- * [position_on_rank][occupancy_of_center]
- * [8][64]
- * 8 * 64 = 512 bytes
- */
-/*
- * How to use lookup:
- * As an example, consider diagonal of the bishop on C1
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 1
- * 0 0 0 0 0 0 1 0
- * 0 0 0 0 0 1 0 0
- * 0 0 0 0 1 0 0 0
- * 0 0 0 1 0 0 0 0
- * 0 0 1 0 0 0 0 0
- * This can be turned into a lookup by first using fill multiplication:
- * 0x0000804020100804ull * 0x0101010101010101ull =
- * 0 0 1 1 1 1 1 1
- * 0 0 1 1 1 1 1 1
- * 0 0 1 1 1 1 1 1
- * 0 0 1 1 1 1 1 0
- * 0 0 1 1 1 1 0 0
- * 0 0 1 1 1 0 0 0
- * 0 0 1 1 0 0 0 0
- * 0 0 1 0 0 0 0 0
- * And shifting this down by 56:
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 0
- * 0 0 0 0 0 0 0 0
- * 0 0 1 1 1 1 1 1
- *
- * After lookup the resulting value can be multiplied by 0x0101010101010101
- * and then & with the original diagonal will yield the attack set
- */
 const uint8_t sliding_attack_lookups[512] = {
 	/* Indice = (6bit key * 8) + file */
 	/* 00000000 */
@@ -319,9 +141,6 @@ const uint8_t sliding_attack_lookups[512] = {
 	0x2, 0x5, 0xa, 0x14, 0x28, 0x50, 0xa0, 0x40
 };
 
-/*
- * Attack sets for kings, by square
- */
 const uint64_t king_attack_lookups[64] = {
         0x302ull, 
         0x705ull, 
@@ -389,9 +208,6 @@ const uint64_t king_attack_lookups[64] = {
         0x40c0000000000000ull
 };
 
-/*
- * Attack sets for knights, by square
- */
 const uint64_t knight_attack_lookups[64] = {
 	0x20400ull,
 	0x50800ull,
@@ -459,8 +275,7 @@ const uint64_t knight_attack_lookups[64] = {
 	0x20400000000000ull
 };
 
-/* table for two square jumps for pawns on starting rank */
-const uint64_t pawn_twosquare[8] = {
+const uint64_t pawn_doublepush[8] = {
 	0x1010000ull,
 	0x2020000ull,
 	0x4040000ull,
@@ -471,9 +286,6 @@ const uint64_t pawn_twosquare[8] = {
 	0x80800000ull
 };
 
-/*
- * Movement sets for pawns, by square 
- */
 const uint64_t pawn_movement[64] = {
 	0x0ull,
 	0x0ull,
@@ -541,10 +353,7 @@ const uint64_t pawn_movement[64] = {
 	0x0ull
 };
 
-/*
- * Pawn attacks, by square
- */
-const uint64_t pawn_captures[64] = {
+const uint64_t pawn_attacks[64] = {
 	0x0ull,
 	0x0ull,
 	0x0ull,
@@ -611,131 +420,6 @@ const uint64_t pawn_captures[64] = {
 	0x0ull
 };
 
-
-/* Returns attack set for pawns */
-uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
-{
-	uint64_t r = 0ull;
-	if (color) {
-		/* lookup tables are written for white pawns, so shift */
-		if ((sq / 8) == 6) {
-			if (!((pawn_twosquare[sq % 8] << 16) & ~empty))
-				r |= pawn_movement[sq - 24];
-		}
-		r |= (pawn_movement[sq] >> 16) & empty;
-		r |= (pawn_captures[sq] >> 16) & enemy;
-	} else {
-		if ((sq / 8) == 1) {
-			if (!(pawn_twosquare[sq % 8] & ~empty))
-				r |= pawn_movement[sq + 8];
-		}
-		r |= pawn_movement[sq] & empty;
-		r |= pawn_captures[sq] & enemy;
-	}
-	return r;
-}
-
-/* Returns attack set for bishops */
-uint64_t bishop_moves(uint64_t occupied, int rank, int file)
-{
-	uint64_t r = 0ull;
-	uint64_t diagonal = diagonal_masks[(7 + rank) - file];
-	uint64_t antidiagonal = antidiagonal_masks[rank + file];
-	/* 
-	 * Actually, shift down by 56 gives the key, but the key is then
-	 * multiplied by 8, which is the same as shifting back up by 3, and the
-	 * key is shifted down by one to ignore the occupancy of the edge square
-	 */
-	uint64_t key = (((diagonal & occupied) * FILL_MULTIPLIER) >> 54) & OUTER_SQ_MASK;
-	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & diagonal;
-	key = (((antidiagonal & occupied) * FILL_MULTIPLIER) >> 54) & OUTER_SQ_MASK;
-	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & antidiagonal;
-	return r;
-}
-
-/* Returns attack set for rook */
-uint64_t rook_moves(uint64_t occupied, int rank, int file)
-{
-	uint64_t r = 0ull;
-	uint64_t key = (occupied & rank_masks[rank]) >> (8 * rank);
-	key <<= 2;
-	key &= OUTER_SQ_MASK;
-	/* processor will do 8-bit shift if no cast */
-	r |= (uint64_t)sliding_attack_lookups[key + file] << (8 * rank);
-	key = ((occupied & file_masks[file]) >> file) * MAIN_ANTIDIAGONAL;
-	key >>= 54;
-	key &= OUTER_SQ_MASK;
-	/* but does 64-bit multiply here because of the 64-bit immediate */
-	key = sliding_attack_lookups[key + rank] * MAIN_ANTIDIAGONAL;
-	r |= (key >> (7 - file)) & file_masks[file];
-	return r;
-}
-
-/* Returns attack set for queen */
-uint64_t queen_moves(uint64_t occupied, int rank, int file)
-{
-	uint64_t r = 0ull;
-	r |= bishop_moves(occupied, rank, file);
-	r |= rook_moves(occupied, rank, file);
-	return r;
-}
-
-/* 
- * Returns check status for board.
- * Note: although only one player can be in check at any given moment,
- * this function will be called in movegen and will probably be given boards
- * after illegal moves which cause both players to be in check
- */
-uint16_t check_status(struct board_t *boardPtr)
-{
-	int bking, wking, brank, bfile, wrank, wfile;
-	uint64_t occupied = boardPtr->occupied;
-	uint64_t blackp = boardPtr->black_pieces;
-	uint64_t whitep = ~blackp & boardPtr->occupied;
-	uint16_t ret = 0;
-	bking = bitindice(blackp & boardPtr->kings);
-	wking = bitindice(boardPtr->kings ^ (1ull << bking));
-	brank = bking / 8;
-	bfile = bking % 8;
-	wrank = wking / 8;
-	wfile = wking % 8;
-	if (rook_moves(occupied, wrank, wfile) & ((blackp & boardPtr->rooks) | (
-				blackp & boardPtr->queens))) {
-		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (bishop_moves(occupied, wrank, wfile) & ((blackp & 
-				boardPtr->bishops) | (blackp & boardPtr->queens))) {
-		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (knight_attack_lookups[wking] & (blackp & boardPtr->knights)) {
-		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (pawn_captures[wking] & (blackp & boardPtr->pawns)) {
-		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (king_attack_lookups[wking] & (blackp & boardPtr->kings)) {
-		ret |= WHITE_CHECK;
-	}
-	test_black:
-	if (rook_moves(occupied, brank, bfile) & ((whitep & boardPtr->rooks) |
-			(whitep & boardPtr->queens))) {
-		ret |= BLACK_CHECK;
-		return ret;
-	} else if (bishop_moves(occupied, brank, bfile) & ((whitep & 
-				boardPtr->bishops) | (whitep & boardPtr->queens))) {
-		ret |= BLACK_CHECK;
-		return ret;
-	} else if (knight_attack_lookups[bking] & (whitep & boardPtr->knights)) {
-		ret |= BLACK_CHECK;
-		return ret;
-	} else if (pawn_captures[bking] & (whitep & boardPtr->pawns)) {
-		ret |= BLACK_CHECK;
-		return ret;
-	} else if (king_attack_lookups[bking] & (whitep & boardPtr->kings)) {
-		ret |= BLACK_CHECK;
-	}
-	return ret;
-}
 
 struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 		int color, int mode, int ep)
@@ -809,7 +493,7 @@ struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 		}
 		pieces &= pieces - 1;
 	}
-	if (ep != -1)
+	if ((ep != -1) && (mode == 1))
 		boardPtr->pawns ^= (1ull << ep);
 	return (ls.root);
 }

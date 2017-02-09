@@ -4,6 +4,27 @@
 #include <stdint.h>
 #include "chess.h"
 
+/*
+ * Start position perft values:
+ *            Moves   Captures  EP  Castles  Promo
+ * Perft(0) 1
+ * Perft(1) 20 
+ * Perft(2) 400 
+ * Perft(3) 8902      34
+ * Perft(4) 197281    1576
+ * Perft(5) 4865609   82719     258
+ * Perft(6) 119060324 2812008   5248
+ */
+
+/*
+ * Perft values for 'kiwipete'
+ *          Moves      Captures    EP    Castles  Promo
+ * Perft(1) 48         8                 2
+ * Perft(2) 2039       351         1     91
+ * Perft(3) 97862      17102       45    3162
+ * Perft(4) 4085603    757163      1929  128013   15172
+ * Perft(5) 193690690  35043416    73365 4993637  
+ */
 static const struct position_t perft1 = {
 	{
 		0x917d731812a4ff91ull,

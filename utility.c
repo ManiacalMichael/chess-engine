@@ -4,38 +4,6 @@
 #include "headers/chess.h"
 #include "headers/utility.h"
 
-/*
- * Returns the indice of the ls1b in a bitboard with exactly one bit set
- */
-/*
- * Trust the magic array, it's one of the few things that worked
- * exactly as intended in the last engine
- */
-int bitindice(uint64_t bb)
-{
-	static const int arr[67] = {
-		-1, 0, 1, 39, 2, 15, 40, 23, 3, 12, 16, 59, 41, 19, 24,
-		54, 4, -1, 13, 10, 17, 62, 60, 28, 42, 30, 20, 51, 25,
-		44, 55, 47, 5, 32, -1, 38, 14, 22, 11, 58, 18, 53, 63,
-		9, 61, 27, 29, 50, 43, 46, 31, 37, 21, 57, 52, 8, 26,
-		49, 45, 36, 56, 7, 48, 35, 6, 34, 33
-	};
-	return arr[bb % 67];
-}
-
-/*
- * Returns the number of bits set in a bitboard
- */
-int popcount(uint64_t bb)
-{
-	int x = 0;
-	while (bb != 0ull) {
-		bb &= bb - 1;
-		x++;
-	}
-	return x;
-}
-
 
 /*
  * Allocates and initializes a movenode
