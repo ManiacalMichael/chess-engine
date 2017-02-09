@@ -9,6 +9,64 @@
  */
 #define OUTER_SQ_MASK 0x00000000000001f8ull
 
+const uint64_t file_masks[8] = {
+	0x0101010101010101ull,
+	0x0202020202020202ull,
+	0x0404040404040404ull,
+	0x0808080808080808ull,
+	0x1010101010101010ull,
+	0x2020202020202020ull,
+	0x4040404040404040ull,
+	0x8080808080808080ull
+};
+
+const uint64_t rank_masks[8] = {
+	0x00000000000000ffull,
+	0x000000000000ff00ull,
+	0x0000000000ff0000ull,
+	0x00000000ff000000ull,
+	0x000000ff00000000ull,
+	0x0000ff0000000000ull,
+	0x00ff000000000000ull,
+	0xff00000000000000ull
+};
+
+const uint64_t diagonal_masks[15] = {
+	0x0000000000000080ull,
+	0x0000000000008040ull,
+	0x0000000000804020ull,
+	0x0000000080402010ull,
+	0x0000008040201008ull,
+	0x0000804020100804ull,
+	0x0080402010080402ull,
+	0x8040201008040201ull,
+	0x4020100804020100ull,
+	0x2010080402010000ull,
+	0x1008040201000000ull,
+	0x0804020100000000ull,
+	0x0402010000000000ull,
+	0x0201000000000000ull,
+	0x0100000000000000ull
+};
+
+const uint64_t antidiagonal_masks[15] = {
+	0x0000000000000001ull,
+	0x0000000000000102ull,
+	0x0000000000010204ull,
+	0x0000000001020408ull,
+	0x0000000102040810ull,
+	0x0000010204081020ull,
+	0x0001020408102040ull,
+	0x0102040810204080ull,
+	0x0204081020408000ull,
+	0x0408102040800000ull,
+	0x0810204080000000ull,
+	0x1020408000000000ull,
+	0x2040800000000000ull,
+	0x4080000000000000ull,
+	0x8000000000000000ull
+};
+
 const uint8_t sliding_attack_lookups[512] = {
 	/* Indice = (6bit key * 8) + file */
 	/* 00000000 */
@@ -421,6 +479,168 @@ const uint64_t pawn_attacks[64] = {
 };
 
 
+uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
+{
+	uint64_t r = 0ull;
+	if (color) {
+		/* lookup tables are written for white pawns, so shift */
+		if ((sq / 8) == 6) {
+			if (!((pawn_twosquare[sq % 8] << 16) & ~empty))
+				r |= pawn_movement[sq - 24];
+		}
+		r |= (pawn_movement[sq] >> 16) & empty;
+		r |= (pawn_captures[sq] >> 16) & enemy;
+	} else {
+		if ((sq / 8) == 1) {
+			if (!(pawn_twosquare[sq % 8] & ~empty))
+				r |= pawn_movement[sq + 8];
+		}
+		r |= pawn_movement[sq] & empty;
+		r |= pawn_captures[sq] & enemy;
+	}
+	return r;
+}
+
+uint64_t bishop_moves(uint64_t occupied, int rank, int file)
+{
+	uint64_t r = 0ull;
+	uint64_t diagonal = diagonal_masks[(7 + rank) - file];
+	uint64_t antidiagonal = antidiagonal_masks[rank + file];
+	/* 
+	 * Actually, shift down by 56 gives the key, but the key is then
+	 * multiplied by 8, which is the same as shifting back up by 3, and the
+	 * key is shifted down by one to ignore the occupancy of the edge square
+	 */
+	uint64_t key = (((diagonal & occupied) * FILL_MULTIPLIER) >> 54) & OUTER_SQ_MASK;
+	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & diagonal;
+	key = (((antidiagonal & occupied) * FILL_MULTIPLIER) >> 54) & OUTER_SQ_MASK;
+	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & antidiagonal;
+	return r;
+}
+
+uint64_t rook_moves(uint64_t occupied, int rank, int file)
+{
+	uint64_t r = 0ull;
+	uint64_t key = (occupied & rank_masks[rank]) >> (8 * rank);
+	key <<= 2;
+	key &= OUTER_SQ_MASK;
+	/* processor will do 8-bit shift if no cast */
+	r |= (uint64_t)sliding_attack_lookups[key + file] << (8 * rank);
+	key = ((occupied & file_masks[file]) >> file) * MAIN_ANTIDIAGONAL;
+	key >>= 54;
+	key &= OUTER_SQ_MASK;
+	/* but does 64-bit multiply here because of the 64-bit immediate */
+	key = sliding_attack_lookups[key + rank] * MAIN_ANTIDIAGONAL;
+	r |= (key >> (7 - file)) & file_masks[file];
+	return r;
+}
+
+uint64_t queen_moves(uint64_t occupied, int rank, int file)
+{
+	uint64_t r = 0ull;
+	r |= bishop_moves(occupied, rank, file);
+	r |= rook_moves(occupied, rank, file);
+	return r;
+}
+
+uint16_t check_status(struct board_t *boardPtr)
+{
+	int bking, wking, brank, bfile, wrank, wfile;
+	uint64_t occupied = boardPtr->occupied;
+	uint64_t blackp = boardPtr->black_pieces;
+	uint64_t whitep = ~blackp & boardPtr->occupied;
+	uint16_t ret = 0;
+	bking = bitindice(blackp & boardPtr->kings);
+	wking = bitindice(boardPtr->kings ^ (1ull << bking));
+	brank = bking / 8;
+	bfile = bking % 8;
+	wrank = wking / 8;
+	wfile = wking % 8;
+	if (rook_moves(occupied, wrank, wfile) & ((blackp & boardPtr->rooks) | (
+				blackp & boardPtr->queens))) {
+		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (bishop_moves(occupied, wrank, wfile) & ((blackp & 
+				boardPtr->bishops) | (blackp & boardPtr->queens))) {
+		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (knight_attack_lookups[wking] & (blackp & boardPtr->knights)) {
+		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (pawn_captures[wking] & (blackp & boardPtr->pawns)) {
+		ret |= WHITE_CHECK;
+		goto test_black;
+	} else if (king_attack_lookups[wking] & (blackp & boardPtr->kings)) {
+		ret |= WHITE_CHECK;
+	}
+	test_black:
+	if (rook_moves(occupied, brank, bfile) & ((whitep & boardPtr->rooks) |
+			(whitep & boardPtr->queens))) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (bishop_moves(occupied, brank, bfile) & ((whitep & 
+				boardPtr->bishops) | (whitep & boardPtr->queens))) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (knight_attack_lookups[bking] & (whitep & boardPtr->knights)) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (pawn_captures[bking] & (whitep & boardPtr->pawns)) {
+		ret |= BLACK_CHECK;
+		return ret;
+	} else if (king_attack_lookups[bking] & (whitep & boardPtr->kings)) {
+		ret |= BLACK_CHECK;
+	}
+	return ret;
+}
+
+uint64_t castle_moves(struct position_t *posPtr)
+{
+	struct board_t testboard = posPtr->board;
+	struct movenode_t *r = NULL;
+	uint64_t attk = 0ull;
+	uint64_t empty = ~testboard.occupied;
+	int color = (posPtr->flags & WHITE_TO_MOVE) ? 0 : 1;
+	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
+	int kingpos = color ? S_E8 : S_E1;
+	if (posPtr->flags & BOTH_KINGSIDE_CASTLE) {
+		if (empty & (3ull << (kingpos + 1))) {
+			testboard.kings ^= 3ull << kingpos;
+			testboard.occupied ^= 3ull << kingpos;
+			if (color)
+				testboard.black_pieces ^= 3ull << kingpos;
+			if (!(check_status(&testboard) & friendly_check)) {
+				testboard.kings ^= 3ull << (kingpos + 1);
+				testboard.occupied ^= 3ull << (kingpos + 1);
+				if (color)
+					testboard.black_pieces ^= 3ull << (kingpos + 1);
+				if (!(check_status(&testboard) & friendly_check))
+					attk |= 1ull << (kingpos + 2);
+			}
+		}
+	}
+	testboard = posPtr->board;
+	if (posPtr->flags & BOTH_QUEENSIDE_CASTLE) {
+		if (empty & (7ull << (kingpos - 3))) {
+			testboard.kings ^= 3ull << (kingpos - 1);
+			testboard.occupied ^= 3ull << (kingpos - 1);
+			if (color)
+				testboard.black_pieces ^= 3ull << (kingpos - 1);
+			if (!(check_status(&testboard) & friendly_check)) {
+				testboard.kings ^= 3ull << (kingpos - 2);
+				testboard.occupied ^= 3ull << (kingpos - 2);
+				if (color)
+					testboard.black_pieces ^= 3ull << (kingpos - 2);
+				if (!(check_status(&testboard) & friendly_check))
+					attk |= 1ull << (kingpos - 2);
+			}
+		}
+	}
+	r = color ? (serialize_moves(S_E8, attk, &posPtr->board)) :
+		(serialize_moves(S_E1, attk, &posPtr->board));
+	return r;
+}
+
 struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 		int color, int mode, int ep)
 {
@@ -496,53 +716,6 @@ struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
 	if ((ep != -1) && (mode == 1))
 		boardPtr->pawns ^= (1ull << ep);
 	return (ls.root);
-}
-
-struct movenode_t *castle_moves(struct position_t *posPtr)
-{
-	struct board_t testboard = posPtr->board;
-	struct movenode_t *r = NULL;
-	uint64_t attk = 0ull;
-	uint64_t empty = ~testboard.occupied;
-	int color = (posPtr->flags & WHITE_TO_MOVE) ? 0 : 1;
-	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
-	int kingpos = color ? S_E8 : S_E1;
-	if (posPtr->flags & BOTH_KINGSIDE_CASTLE) {
-		if (empty & (3ull << (kingpos + 1))) {
-			testboard.kings ^= 3ull << kingpos;
-			testboard.occupied ^= 3ull << kingpos;
-			if (color)
-				testboard.black_pieces ^= 3ull << kingpos;
-			if (!(check_status(&testboard) & friendly_check)) {
-				testboard.kings ^= 3ull << (kingpos + 1);
-				testboard.occupied ^= 3ull << (kingpos + 1);
-				if (color)
-					testboard.black_pieces ^= 3ull << (kingpos + 1);
-				if (!(check_status(&testboard) & friendly_check))
-					attk |= 1ull << (kingpos + 2);
-			}
-		}
-	}
-	testboard = posPtr->board;
-	if (posPtr->flags & BOTH_QUEENSIDE_CASTLE) {
-		if (empty & (7ull << (kingpos - 3))) {
-			testboard.kings ^= 3ull << (kingpos - 1);
-			testboard.occupied ^= 3ull << (kingpos - 1);
-			if (color)
-				testboard.black_pieces ^= 3ull << (kingpos - 1);
-			if (!(check_status(&testboard) & friendly_check)) {
-				testboard.kings ^= 3ull << (kingpos - 2);
-				testboard.occupied ^= 3ull << (kingpos - 2);
-				if (color)
-					testboard.black_pieces ^= 3ull << (kingpos - 2);
-				if (!(check_status(&testboard) & friendly_check))
-					attk |= 1ull << (kingpos - 2);
-			}
-		}
-	}
-	r = color ? (serialize_moves(S_E8, attk, &posPtr->board)) :
-		(serialize_moves(S_E1, attk, &posPtr->board));
-	return r;
 }
 
 struct movelist_t generate_moves(struct position_t *posPtr)

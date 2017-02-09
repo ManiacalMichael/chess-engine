@@ -79,20 +79,6 @@ enum FILES {
 };
 
 
-
-/* TODO: declare these in a .c file */
-extern const uint64_t file_masks[8];
-
-extern const uint64_t rank_masks[8];
-
-/* Indice = (7 + rank) - file */
-extern const uint64_t diagonal_masks[15];
-
-/* Indice = rank + file */
-extern const uint64_t antidiagonal_masks[15];
-
-
-
 /*
  * struct position_t
  * 	white_pieces: 
@@ -145,40 +131,15 @@ struct position_t {
 #define GAME_DRAWN 0x4000u
 #define WHITE_TO_MOVE 0x8000u
 
-/* TODO: move this to a .c file, make this extern */
-static const struct position_t START_POSITION = { 
-	.black_pieces = {
-		0xffff000000000000ull,
-		0x00ff000000000000ull,
-		0x4200000000000000ull,
-		0x2400000000000000ull,
-		0x8100000000000000ull,
-		0x0800000000000000ull,
-		0x1000000000000000ull
-	},			
-	.white_pieces = {
-		0x000000000000ffffull,
-		0x000000000000ff00ull,
-		0x0000000000000042ull,
-		0x0000000000000024ull,
-		0x0000000000000081ull,
-		0x0000000000000008ull,
-		0x0000000000000001ull
-	},
-	.occupied = 0xffff00000000ffffull,
-	.empty = 0x0000ffffffff0000ull,
-	.captures = { 0 };
-	.kingpos = { 4, 60 };
-	.flags = 0x8780u,	
-	.moves = 0,	
-	.fiftymove = 0
-};
 
+extern const struct position_t START_POSITION;
 
 
 /*
  * Move encoding:
- * 012345	- Start square * 6789ab	- End square * cdef		- Move flags:
+ * 012345	- Start square 
+ * 6789ab	- End square 
+ * cdef		- Move flags:
  * 0: quiet move
  * 1: double pawn push
  * 2: queenside castle
@@ -238,57 +199,6 @@ int popcount(uint64_t bb);
  * 	@bb - value to find ls1b of
  */
 int ls1bindice(uint64_t bb);
-
-/*
- * uint64_t pawn_moves()
- * Returns an attack set for a pawn
- * 	@enemy - Bitboard of squares occupied by enemy pieces
- * 	@empty - Bitboard of empty squares
- * 	@color - Color of the pawn in COLORS
- * 	@sq - Square the pawn is on
- */
-uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq);
-
-/*
- * uint64_t bishop_moves()
- * Returns an attack set for a bishop
- * 	@occupied - Bitboard of occupied squares
- * 	@rank - Rank the piece is on
- * 	@file - File the piece is on
- */
-uint64_t bishop_moves(uint64_t occupied, int rank, int file);
-
-/*
- * uint64_t rook_moves()
- * Returns an attack set for a rook
- * 	@occupied - Bitboard of occupied squares
- * 	@rank - Rank the piece is on
- * 	@file - File the piece is on
- */
-uint64_t rook_moves(uint64_t occupied, int rank, int file);
-
-/*
- * uint64_t queen_moves()
- * Returns an attack set for a queen
- * 	@occupied - Bitboard of occupied squares
- * 	@rank - Rank the piece is on
- * 	@file - File the piece is on
- */
-uint64_t queen_moves(uint64_t occupied, int rank, int file);
-
-/*
- * uint16_t check_status()
- * Returns check status of a position
- * 	@posPtr - pointer to the position to check
- */
-uint16_t check_status(struct position_t *posPtr);
-
-/*
- * uint64_t castle_moves()
- * Returns attack set of a king for castling
- * 	@posPtr - pointer to the position to generate moves for
- */
-uint64_t castle_moves(struct position_t *posPtr);
 
 /*
  * void make_move()

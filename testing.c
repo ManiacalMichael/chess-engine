@@ -15,6 +15,8 @@ int main(void)
 {
 	printf("Starting perft tests\n");
 	printf("Start position:\n");
+	printf("%s%d%s", "Perft(1): Expected 20 Actual ",
+			perft(START_POSITION, 1), "\n");
 	printf("%s%d%s", "Perft(2): Expected 400 Actual ", 
 			perft(START_POSITION, 2), "\n");
 	printf("%s%d%s", "Perft(3): Expected 8092 Actual ", 
@@ -23,6 +25,8 @@ int main(void)
 			perft(START_POSITION, 4), "\n");
 	printf("Test position 1\n");
 	printpos(perft1);
+	printf("%s%d%s", "Perft(1): Expected 48 Actual ",
+			perft(perft1, 1), "\n");
 	printf("%s%d%s", "Perft(2): Expected 2039 Actual ",
 			perft(perft1, 2), "\n");
 	printf("%s%d%s", "Perft(3): Expected 97862 Actual ",

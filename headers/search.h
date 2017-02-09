@@ -13,6 +13,17 @@
 #define NEG_INFINITY 32767
 
 
+
+extern const uint64_t file_masks[8];
+
+extern const uint64_t rank_masks[8];
+
+/* Indice = (7 + rank) - file */
+extern const uint64_t diagonal_masks[15];
+
+/* Indice = rank + file */
+extern const uint64_t antidiagonal_masks[15];
+
 /* Indice = (6bit key * 8) + file */
 extern const uint8_t sliding_attack_lookups[512];
 
@@ -27,6 +38,57 @@ extern const uint64_t pawn_movement[2][64];
 extern const uint64_t pawn_attacks[2][64];
 
 
+
+/*
+ * uint64_t pawn_moves()
+ * Returns an attack set for a pawn
+ * 	@enemy - Bitboard of squares occupied by enemy pieces
+ * 	@empty - Bitboard of empty squares
+ * 	@color - Color of the pawn in COLORS
+ * 	@sq - Square the pawn is on
+ */
+uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq);
+
+/*
+ * uint64_t bishop_moves()
+ * Returns an attack set for a bishop
+ * 	@occupied - Bitboard of occupied squares
+ * 	@rank - Rank the piece is on
+ * 	@file - File the piece is on
+ */
+uint64_t bishop_moves(uint64_t occupied, int rank, int file);
+
+/*
+ * uint64_t rook_moves()
+ * Returns an attack set for a rook
+ * 	@occupied - Bitboard of occupied squares
+ * 	@rank - Rank the piece is on
+ * 	@file - File the piece is on
+ */
+uint64_t rook_moves(uint64_t occupied, int rank, int file);
+
+/*
+ * uint64_t queen_moves()
+ * Returns an attack set for a queen
+ * 	@occupied - Bitboard of occupied squares
+ * 	@rank - Rank the piece is on
+ * 	@file - File the piece is on
+ */
+uint64_t queen_moves(uint64_t occupied, int rank, int file);
+
+/*
+ * uint16_t check_status()
+ * Returns check status of a position
+ * 	@posPtr - pointer to the position to check
+ */
+uint16_t check_status(struct position_t *posPtr);
+
+/*
+ * uint64_t castle_moves()
+ * Returns attack set of a king for castling
+ * 	@posPtr - pointer to the position to generate moves for
+ */
+uint64_t castle_moves(struct position_t *posPtr);
 
 /*
  * void serialize_moves()
