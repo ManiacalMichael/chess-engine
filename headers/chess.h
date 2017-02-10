@@ -81,24 +81,27 @@ enum FILES {
 
 /*
  * struct position_t
- * 	white_pieces: 
- * 	black_pieces: Bitboards, index by PIECETYPES, 0 = all pieces
+ * 	pieces: Array of bitboards, index by COLORS and PIECETYPES
  * 	occupied:
  * 	empty: Bitboards, occupied and empty squares of both colors
  * 	captures: Tracks the most recently captured pieces by type,
  * 	          first element is the number of captured pieces
  * 	kingpos: position of kings on board, index by COLORS
+ * 	ep_history: record of when and where e.p. squares were set
+ * 	            [0][0] = number of e.p. squares recorded
+ * 	            [0][x] = square where e.p. was set
+ * 	            [1][x] = halfmove when e.p. was set
  * 	flags: Position flags, see #defines for more information
  * 	moves: Age of position, in halfmoves from start position
  * 	fiftymove: Number of halfmoves since an irreversible move took place
  */
 struct position_t {
-	uint64_t white_pieces[7];
-	uint64_t black_pieces[7];
+	uint64_t pieces[2][7];
 	uint64_t occupied;
 	uint64_t empty;
 	unsigned char captures[31];
 	unsigned char kingpos[2];
+	unsigned ep_history[2][17];
 	uint16_t flags;
 	int moves;
 	int fiftymove;
@@ -186,6 +189,15 @@ extern const struct position_t START_POSITION;
 
 
 
+ #ifdef NO_SEARCH_LINKAGE
+
+/*
+ * uint16_t check_status() nop
+ */
+uint16_t check_status(const struct position_t pos) {;}
+
+ #endif
+
 /*
  * int popcount()
  * Returns the number of set bits in a 64-bit value
@@ -211,6 +223,7 @@ void make_move(struct position_t *posPtr, uint16_t mv);
 /*
  * void unmake_move()
  * Unmakes a move on a position
+ * NOTE: fiftymove counter cannot be restored after it has been reset to 0
  * 	@posPtr - pointer to the position to unmake the move on
  * 	@mv - move to unmake
  */

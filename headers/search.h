@@ -79,9 +79,9 @@ uint64_t queen_moves(uint64_t occupied, int rank, int file);
 /*
  * uint16_t check_status()
  * Returns check status of a position
- * 	@posPtr - pointer to the position to check
+ * 	@pos - Position to check
  */
-uint16_t check_status(struct position_t *posPtr);
+uint16_t check_status(const struct position_t pos);
 
 /*
  * uint64_t castle_moves()
@@ -95,10 +95,10 @@ uint64_t castle_moves(struct position_t *posPtr);
  * Converts an attack set to moves and adds them to a movelist
  * 	@sq - Square the piece is on
  * 	@attk - Attack set of the piece on square `sq`
- * 	@posPtr - pointer to the position the attack set was generated from
+ * 	@pos - position the attack set was generated from
  * 	@lsPtr - pointer to the list the moves will be added to
  */
-void serialize_moves(int sq, uint64_t attk, struct position_t *posPtr,
+void serialize_moves(int sq, uint64_t attk, const struct position_t pos,
 		uint16_t *lsPtr);
 
 /*

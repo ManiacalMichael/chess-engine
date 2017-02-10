@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "headers/chess.h"
-#include "headers/utility.h"
 #include "headers/search.h"
 
 /* 
@@ -333,171 +332,309 @@ const uint64_t knight_attack_lookups[64] = {
 	0x20400000000000ull
 };
 
-const uint64_t pawn_doublepush[8] = {
-	0x1010000ull,
-	0x2020000ull,
-	0x4040000ull,
-	0x8080000ull,
-	0x10100000ull,
-	0x20200000ull,
-	0x40400000ull,
-	0x80800000ull
+const uint64_t pawn_doublepush[2][8] = {
+	{
+		0x1010000ull,
+		0x2020000ull,
+		0x4040000ull,
+		0x8080000ull,
+		0x10100000ull,
+		0x20200000ull,
+		0x40400000ull,
+		0x80800000ull
+	},
+	{
+		0x10100000000ull,
+		0x20200000000ull,
+		0x40400000000ull,
+		0x80800000000ull,
+		0x101000000000ull,
+		0x202000000000ull,
+		0x404000000000ull,
+		0x808000000000ull
+	}
 };
 
-const uint64_t pawn_movement[64] = {
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x10000ull,
-	0x20000ull,
-	0x40000ull,
-	0x80000ull,
-	0x100000ull,
-	0x200000ull,
-	0x400000ull,
-	0x800000ull,
-	0x1000000ull,
-	0x2000000ull,
-	0x4000000ull,
-	0x8000000ull,
-	0x10000000ull,
-	0x20000000ull,
-	0x40000000ull,
-	0x80000000ull,
-	0x100000000ull,
-	0x200000000ull,
-	0x400000000ull,
-	0x800000000ull,
-	0x1000000000ull,
-	0x2000000000ull,
-	0x4000000000ull,
-	0x8000000000ull,
-	0x10000000000ull,
-	0x20000000000ull,
-	0x40000000000ull,
-	0x80000000000ull,
-	0x100000000000ull,
-	0x200000000000ull,
-	0x400000000000ull,
-	0x800000000000ull,
-	0x1000000000000ull,
-	0x2000000000000ull,
-	0x4000000000000ull,
-	0x8000000000000ull,
-	0x10000000000000ull,
-	0x20000000000000ull,
-	0x40000000000000ull,
-	0x80000000000000ull,
-	0x100000000000000ull,
-	0x200000000000000ull,
-	0x400000000000000ull,
-	0x800000000000000ull,
-	0x1000000000000000ull,
-	0x2000000000000000ull,
-	0x4000000000000000ull,
-	0x8000000000000000ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull
+const uint64_t pawn_movement[2][64] = {
+	{
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x10000ull,
+		0x20000ull,
+		0x40000ull,
+		0x80000ull,
+		0x100000ull,
+		0x200000ull,
+		0x400000ull,
+		0x800000ull,
+		0x1000000ull,
+		0x2000000ull,
+		0x4000000ull,
+		0x8000000ull,
+		0x10000000ull,
+		0x20000000ull,
+		0x40000000ull,
+		0x80000000ull,
+		0x100000000ull,
+		0x200000000ull,
+		0x400000000ull,
+		0x800000000ull,
+		0x1000000000ull,
+		0x2000000000ull,
+		0x4000000000ull,
+		0x8000000000ull,
+		0x10000000000ull,
+		0x20000000000ull,
+		0x40000000000ull,
+		0x80000000000ull,
+		0x100000000000ull,
+		0x200000000000ull,
+		0x400000000000ull,
+		0x800000000000ull,
+		0x1000000000000ull,
+		0x2000000000000ull,
+		0x4000000000000ull,
+		0x8000000000000ull,
+		0x10000000000000ull,
+		0x20000000000000ull,
+		0x40000000000000ull,
+		0x80000000000000ull,
+		0x100000000000000ull,
+		0x200000000000000ull,
+		0x400000000000000ull,
+		0x800000000000000ull,
+		0x1000000000000000ull,
+		0x2000000000000000ull,
+		0x4000000000000000ull,
+		0x8000000000000000ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull
+	},
+	{
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x1ull,
+		0x2ull,
+		0x4ull,
+		0x8ull,
+		0x10ull,
+		0x20ull,
+		0x40ull,
+		0x80ull,
+		0x100ull,
+		0x200ull,
+		0x400ull,
+		0x800ull,
+		0x1000ull,
+		0x2000ull,
+		0x4000ull,
+		0x8000ull,
+		0x10000ull,
+		0x20000ull,
+		0x40000ull,
+		0x80000ull,
+		0x100000ull,
+		0x200000ull,
+		0x400000ull,
+		0x800000ull,
+		0x1000000ull,
+		0x2000000ull,
+		0x4000000ull,
+		0x8000000ull,
+		0x10000000ull,
+		0x20000000ull,
+		0x40000000ull,
+		0x80000000ull,
+		0x100000000ull,
+		0x200000000ull,
+		0x400000000ull,
+		0x800000000ull,
+		0x1000000000ull,
+		0x2000000000ull,
+		0x4000000000ull,
+		0x8000000000ull,
+		0x10000000000ull,
+		0x20000000000ull,
+		0x40000000000ull,
+		0x80000000000ull,
+		0x100000000000ull,
+		0x200000000000ull,
+		0x400000000000ull,
+		0x800000000000ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull
+	}
 };
 
-const uint64_t pawn_attacks[64] = {
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x20000ull,
-	0x50000ull,
-	0xa0000ull,
-	0x140000ull,
-	0x280000ull,
-	0x500000ull,
-	0xa00000ull,
-	0x400000ull,
-	0x2000000ull,
-	0x5000000ull,
-	0xa000000ull,
-	0x14000000ull,
-	0x28000000ull,
-	0x50000000ull,
-	0xa0000000ull,
-	0x40000000ull,
-	0x200000000ull,
-	0x500000000ull,
-	0xa00000000ull,
-	0x1400000000ull,
-	0x2800000000ull,
-	0x5000000000ull,
-	0xa000000000ull,
-	0x4000000000ull,
-	0x20000000000ull,
-	0x50000000000ull,
-	0xa0000000000ull,
-	0x140000000000ull,
-	0x280000000000ull,
-	0x500000000000ull,
-	0xa00000000000ull,
-	0x400000000000ull,
-	0x2000000000000ull,
-	0x5000000000000ull,
-	0xa000000000000ull,
-	0x14000000000000ull,
-	0x28000000000000ull,
-	0x50000000000000ull,
-	0xa0000000000000ull,
-	0x40000000000000ull,
-	0x200000000000000ull,
-	0x500000000000000ull,
-	0xa00000000000000ull,
-	0x1400000000000000ull,
-	0x2800000000000000ull,
-	0x5000000000000000ull,
-	0xa000000000000000ull,
-	0x4000000000000000ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull,
-	0x0ull
+const uint64_t pawn_attacks[2][64] = {
+	{
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x20000ull,
+		0x50000ull,
+		0xa0000ull,
+		0x140000ull,
+		0x280000ull,
+		0x500000ull,
+		0xa00000ull,
+		0x400000ull,
+		0x2000000ull,
+		0x5000000ull,
+		0xa000000ull,
+		0x14000000ull,
+		0x28000000ull,
+		0x50000000ull,
+		0xa0000000ull,
+		0x40000000ull,
+		0x200000000ull,
+		0x500000000ull,
+		0xa00000000ull,
+		0x1400000000ull,
+		0x2800000000ull,
+		0x5000000000ull,
+		0xa000000000ull,
+		0x4000000000ull,
+		0x20000000000ull,
+		0x50000000000ull,
+		0xa0000000000ull,
+		0x140000000000ull,
+		0x280000000000ull,
+		0x500000000000ull,
+		0xa00000000000ull,
+		0x400000000000ull,
+		0x2000000000000ull,
+		0x5000000000000ull,
+		0xa000000000000ull,
+		0x14000000000000ull,
+		0x28000000000000ull,
+		0x50000000000000ull,
+		0xa0000000000000ull,
+		0x40000000000000ull,
+		0x200000000000000ull,
+		0x500000000000000ull,
+		0xa00000000000000ull,
+		0x1400000000000000ull,
+		0x2800000000000000ull,
+		0x5000000000000000ull,
+		0xa000000000000000ull,
+		0x4000000000000000ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull
+	},
+	{
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x2ull,
+		0x5ull,
+		0xaull,
+		0x14ull,
+		0x28ull,
+		0x50ull,
+		0xa0ull,
+		0x40ull,
+		0x200ull,
+		0x500ull,
+		0xa00ull,
+		0x1400ull,
+		0x2800ull,
+		0x5000ull,
+		0xa000ull,
+		0x4000ull,
+		0x20000ull,
+		0x50000ull,
+		0xa0000ull,
+		0x140000ull,
+		0x280000ull,
+		0x500000ull,
+		0xa00000ull,
+		0x400000ull,
+		0x2000000ull,
+		0x5000000ull,
+		0xa000000ull,
+		0x14000000ull,
+		0x28000000ull,
+		0x50000000ull,
+		0xa0000000ull,
+		0x40000000ull,
+		0x200000000ull,
+		0x500000000ull,
+		0xa00000000ull,
+		0x1400000000ull,
+		0x2800000000ull,
+		0x5000000000ull,
+		0xa000000000ull,
+		0x4000000000ull,
+		0x20000000000ull,
+		0x50000000000ull,
+		0xa0000000000ull,
+		0x140000000000ull,
+		0x280000000000ull,
+		0x500000000000ull,
+		0xa00000000000ull,
+		0x400000000000ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull,
+		0x0ull
+	}
 };
 
 
 uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
 {
 	uint64_t r = 0ull;
-	if (color) {
-		/* lookup tables are written for white pawns, so shift */
-		if ((sq / 8) == 6) {
-			if (!((pawn_twosquare[sq % 8] << 16) & ~empty))
-				r |= pawn_movement[sq - 24];
-		}
-		r |= (pawn_movement[sq] >> 16) & empty;
-		r |= (pawn_captures[sq] >> 16) & enemy;
-	} else {
-		if ((sq / 8) == 1) {
-			if (!(pawn_twosquare[sq % 8] & ~empty))
-				r |= pawn_movement[sq + 8];
-		}
-		r |= pawn_movement[sq] & empty;
-		r |= pawn_captures[sq] & enemy;
+	if ((sq / 8) == 1) {
+		if (!(pawn_twosquare[color][sq % 8] & ~empty))
+			r |= pawn_movement[(color) ? (sq - 8) : (sq + 8)];
 	}
+	r |= pawn_movement[color][sq] & empty;
+	r |= pawn_captures[color][sq] & enemy;
 	return r;
 }
 
@@ -508,8 +645,8 @@ uint64_t bishop_moves(uint64_t occupied, int rank, int file)
 	uint64_t antidiagonal = antidiagonal_masks[rank + file];
 	/* 
 	 * Actually, shift down by 56 gives the key, but the key is then
-	 * multiplied by 8, which is the same as shifting back up by 3, and the
-	 * key is shifted down by one to ignore the occupancy of the edge square
+	 * multiplied by 8, and shifted down by one to ignore the occupancy 
+	 * of the edge square
 	 */
 	uint64_t key = (((diagonal & occupied) * FILL_MULTIPLIER) >> 54) & OUTER_SQ_MASK;
 	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & diagonal;
@@ -529,7 +666,6 @@ uint64_t rook_moves(uint64_t occupied, int rank, int file)
 	key = ((occupied & file_masks[file]) >> file) * MAIN_ANTIDIAGONAL;
 	key >>= 54;
 	key &= OUTER_SQ_MASK;
-	/* but does 64-bit multiply here because of the 64-bit immediate */
 	key = sliding_attack_lookups[key + rank] * MAIN_ANTIDIAGONAL;
 	r |= (key >> (7 - file)) & file_masks[file];
 	return r;
@@ -543,229 +679,66 @@ uint64_t queen_moves(uint64_t occupied, int rank, int file)
 	return r;
 }
 
-uint16_t check_status(struct board_t *boardPtr)
+uint16_t check_status(const struct position_t pos)
 {
-	int bking, wking, brank, bfile, wrank, wfile;
-	uint64_t occupied = boardPtr->occupied;
-	uint64_t blackp = boardPtr->black_pieces;
-	uint64_t whitep = ~blackp & boardPtr->occupied;
+	int brank, bfile, wrank, wfile;
+	uint64_t occupied = pos.occupied;
 	uint16_t ret = 0;
-	bking = bitindice(blackp & boardPtr->kings);
-	wking = bitindice(boardPtr->kings ^ (1ull << bking));
-	brank = bking / 8;
-	bfile = bking % 8;
-	wrank = wking / 8;
-	wfile = wking % 8;
-	if (rook_moves(occupied, wrank, wfile) & ((blackp & boardPtr->rooks) | (
-				blackp & boardPtr->queens))) {
+	brank = pos.kingpos[BLACK] / 8;
+	bfile = pos.kingpos[BLACK] % 8;
+	wrank = pos.kingpos[WHITE] / 8;
+	wfile = pos.kingpos[WHITE] % 8;
+	if (rook_moves(occupied, wrank, wfile) & (pos.pieces[BLACK][ROOK]
+				| pos.pieces[BLACK][QUEEN])) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (bishop_moves(occupied, wrank, wfile) & ((blackp & 
-				boardPtr->bishops) | (blackp & boardPtr->queens))) {
+	} else if (bishop_moves(occupied, wrank, wfile) & (pos.pieces[BLACK][BISHOP]
+				| pos.black_pieces[QUEEN])) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (knight_attack_lookups[wking] & (blackp & boardPtr->knights)) {
+	} else if (knight_attack_lookups[wking] & pos.pieces[BLACK][KNIGHT]) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (pawn_captures[wking] & (blackp & boardPtr->pawns)) {
+	} else if (pawn_captures[WHITE][wking] & pos.pieces[BLACK][PAWN]) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (king_attack_lookups[wking] & (blackp & boardPtr->kings)) {
+	} else if (king_attack_lookups[wking] & pos.pieces[BLACK][KING]) {
 		ret |= WHITE_CHECK;
 	}
 	test_black:
-	if (rook_moves(occupied, brank, bfile) & ((whitep & boardPtr->rooks) |
-			(whitep & boardPtr->queens))) {
+	if (rook_moves(occupied, brank, bfile) & (pos.pieces[WHITE][ROOK]
+				| pos.pieces[WHITE][QUEEN])) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (bishop_moves(occupied, brank, bfile) & ((whitep & 
-				boardPtr->bishops) | (whitep & boardPtr->queens))) {
+	} else if (bishop_moves(occupied, brank, bfile) & (pos.pieces[WHITE][BISHOP]
+				| pos.pieces[WHITE][QUEEN])) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (knight_attack_lookups[bking] & (whitep & boardPtr->knights)) {
+	} else if (knight_attack_lookups[bking] & pos.pieces[WHITE][KNIGHT]) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (pawn_captures[bking] & (whitep & boardPtr->pawns)) {
+	} else if (pawn_captures[BLACK][bking] & pos.pieces[WHITE][PAWN]) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (king_attack_lookups[bking] & (whitep & boardPtr->kings)) {
+	} else if (king_attack_lookups[bking] & pos.pieces[WHITE][KING]) {
 		ret |= BLACK_CHECK;
 	}
 	return ret;
 }
 
-uint64_t castle_moves(struct position_t *posPtr)
+uint64_t castle_moves(struct position_t pos)
 {
-	struct board_t testboard = posPtr->board;
-	struct movenode_t *r = NULL;
 	uint64_t attk = 0ull;
-	uint64_t empty = ~testboard.occupied;
-	int color = (posPtr->flags & WHITE_TO_MOVE) ? 0 : 1;
+	uint64_t empty = pos.empty;
+	int color = (pos.flags & WHITE_TO_MOVE) ? WHITE : BLACK;
 	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
 	int kingpos = color ? S_E8 : S_E1;
-	if (posPtr->flags & BOTH_KINGSIDE_CASTLE) {
-		if (empty & (3ull << (kingpos + 1))) {
-			testboard.kings ^= 3ull << kingpos;
-			testboard.occupied ^= 3ull << kingpos;
-			if (color)
-				testboard.black_pieces ^= 3ull << kingpos;
-			if (!(check_status(&testboard) & friendly_check)) {
-				testboard.kings ^= 3ull << (kingpos + 1);
-				testboard.occupied ^= 3ull << (kingpos + 1);
-				if (color)
-					testboard.black_pieces ^= 3ull << (kingpos + 1);
-				if (!(check_status(&testboard) & friendly_check))
-					attk |= 1ull << (kingpos + 2);
-			}
-		}
+	if (pos.flags & BOTH_KINGSIDE_CASTLE) {
 	}
-	testboard = posPtr->board;
-	if (posPtr->flags & BOTH_QUEENSIDE_CASTLE) {
-		if (empty & (7ull << (kingpos - 3))) {
-			testboard.kings ^= 3ull << (kingpos - 1);
-			testboard.occupied ^= 3ull << (kingpos - 1);
-			if (color)
-				testboard.black_pieces ^= 3ull << (kingpos - 1);
-			if (!(check_status(&testboard) & friendly_check)) {
-				testboard.kings ^= 3ull << (kingpos - 2);
-				testboard.occupied ^= 3ull << (kingpos - 2);
-				if (color)
-					testboard.black_pieces ^= 3ull << (kingpos - 2);
-				if (!(check_status(&testboard) & friendly_check))
-					attk |= 1ull << (kingpos - 2);
-			}
-		}
+	if (pos.flags & BOTH_QUEENSIDE_CASTLE) {
 	}
 	r = color ? (serialize_moves(S_E8, attk, &posPtr->board)) :
 		(serialize_moves(S_E1, attk, &posPtr->board));
 	return r;
-}
-
-struct movenode_t *piece_moves(struct board_t *boardPtr, uint64_t friendly,
-		int color, int mode, int ep)
-{
-	struct movelist_t ls = { NULL, 0 };
-	int i;
-	uint64_t unfriendly = ~friendly;
-	uint64_t pieces = 0ull;
-	uint64_t attk = 0ull;
-	uint64_t occupied = boardPtr->occupied;
-	uint64_t empty = ~occupied;
-	uint64_t enemy = occupied ^ friendly;
-	switch(mode) {
-		case 1:
-			pieces = boardPtr->pawns;
-			if (ep != -1) {
-				enemy |= 1ull << ep;
-				boardPtr->pawns |= 1ull << ep;
-			}
-			break;
-		case 2:
-			pieces = boardPtr->knights;
-			break;
-		case 3:
-			pieces = boardPtr->bishops;
-			break;
-		case 4:
-			pieces = boardPtr->rooks;
-			break;
-		case 5:
-			pieces = boardPtr->queens;
-			break;
-		case 6:
-			pieces = boardPtr->kings;
-			break;
-	}
-	while (pieces != 0x0000000000000000ull) {
-		i = bitindice(pieces ^ (pieces & (pieces - 1)));
-		switch(mode) {
-			case 1:
-				if ((1ull << i) & friendly)
-					attk = pawn_moves(enemy, empty, color, i);
-				else
-					attk = pawn_moves(friendly, empty, 1-color, i);
-				break;
-			case 2:
-				attk = knight_attack_lookups[i];
-				break;
-			case 3:
-				attk = bishop_moves(occupied, i / 8, i % 8);
-				break;
-			case 4:
-				attk = rook_moves(occupied, i / 8, i % 8);
-				break;
-			case 5:
-				attk = queen_moves(occupied, i / 8, i % 8);
-				break;
-			case 6:
-				attk = king_attack_lookups[i];
-				break;
-		}
-		if ((1ull << i) & friendly) {
-			attk &= unfriendly;
-			cat_lists(&ls, serialize_moves(i, attk, boardPtr));
-			color ? (boardPtr->black_attacks |= attk) :
-				(boardPtr->white_attacks |= attk);
-		} else {
-			attk &= friendly & empty;
-			color ? (boardPtr->white_attacks |= attk) :
-				(boardPtr->black_attacks |= attk);
-		}
-		pieces &= pieces - 1;
-	}
-	if ((ep != -1) && (mode == 1))
-		boardPtr->pawns ^= (1ull << ep);
-	return (ls.root);
-}
-
-struct movelist_t generate_moves(struct position_t *posPtr)
-{
-	struct movelist_t ls = { NULL, 0 };
-	struct movenode_t *p;
-	struct position_t testpos = *posPtr;
-	int color = (posPtr->flags & WHITE_TO_MOVE) ? 0 : 1;
-	int ep = (posPtr->flags & EN_PASSANT) ? ((posPtr->flags & EP_SQUARE) >> 1) : -1;
-	uint64_t friendly;
-	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
-	uint16_t friendly_castle = color ? BLACK_BOTH_CASTLE : WHITE_BOTH_CASTLE;
-	uint16_t enemy_check = color ? WHITE_CHECK : BLACK_CHECK;
-	posPtr->board.black_attacks = 0;
-	posPtr->board.white_attacks = 0;
-	friendly = color ? (posPtr->board.black_pieces) : (posPtr->board.occupied 
-			^ posPtr->board.black_pieces);
-	for (int i = 1; i < 7; i++)
-		cat_lists(&ls, piece_moves(&posPtr->board, friendly, color, i, ep));
-	if (posPtr->flags & friendly_castle)
-		cat_lists(&ls, castle_moves(posPtr));
-	p = ls.root;
-	if (p == NULL) {
-		posPtr->flags |= GAME_OVER;
-		return ls;
-	}
-	while (p != NULL) {
-		make_move(&testpos, p->move);
-		testpos.flags |= check_status(&testpos.board);
-		if (testpos.flags & friendly_check) {
-			if (p->nxt == NULL) {
-				p = p->nxt;
-				remove_tail_node(&ls);
-			} else {
-				remove_node(p);
-			}
-			testpos = *posPtr;
-			continue;
-		} else if (testpos.flags & enemy_check) {
-			p->move |= CAUSES_CHECK;
-		}
-		if (ep != -1) {
-			if ((p->move & CAPTURES_PAWN) & (((p->move & EP_SQUARE)
-							>> 1) == ep))
-				p->move |= EP_CAPTURE;
-		}
-		testpos = *posPtr;
-		ls.nodes++;
-		p = p->nxt;
-	}
-	return ls;
 }
 
