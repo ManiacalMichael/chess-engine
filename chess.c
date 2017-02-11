@@ -243,6 +243,7 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 	if (posPtr->fiftymove != 0)
 		--posPtr->fiftymove;
 	if (mv & CAPTURE_MOVE) {
+		/* toggles pawn on wrong square for ep */
 		posPtr->pieces[BLACK - color][pop_capture(posPtr)] |= endbb;
 		posPtr->pieces[BLACK - color][0] |= endbb;
 	}
@@ -262,6 +263,11 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 		posPtr->pieces[color][0] ^= 9ull << (color * S_A8);
 		break;
 	case EP_CAPTURE:
+		/* fix restored capture */
+		posPtr->pieces[BLACK - color][PAWN] ^= endbb & (1ull <<
+				(color ? (end + 8) : (end - 8)));
+		posPtr->pieces[BLACK - color][0] ^= endbb & (1ull <<
+				(color ? (end + 8) : (end - 8)));
 		break;
 	case KNIGHT_CAPTURE_PROMOTION:
 	case KNIGHT_PROMOTION:
