@@ -93,12 +93,12 @@ uint64_t castle_moves(struct position_t *posPtr);
 /*
  * void serialize_moves()
  * Converts an attack set to moves and adds them to a movelist
- * 	@sq - Square the piece is on
+ * 	@start - Square the piece is on
  * 	@attk - Attack set of the piece on square `sq`
  * 	@pos - position the attack set was generated from
  * 	@lsPtr - pointer to the list the moves will be added to
  */
-void serialize_moves(int sq, uint64_t attk, const struct position_t pos,
+void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 		uint16_t *lsPtr);
 
 /*

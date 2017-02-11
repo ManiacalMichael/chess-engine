@@ -100,6 +100,8 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 	}
 	if (piece == PAWN)
 		posPtr->fiftymove = 0;
+	else if (piece == KING)
+		posPtr->kingpos[color] = end;
 	if (mv & CAPTURE_MOVE) {
 		posPtr->fiftymove = 0;
 		/* loop *should* do nothing for e.p. captures */
@@ -111,29 +113,27 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 				break;
 			}
 		}
-		if (posPtr->flags & BOTH_BOTH_CASTLE) {
-			switch (end) {
-			case S_A1:
-				posPtr->flags &= ~WHITE_QUEENSIDE_CASTLE;
-				if (!(posPtr->castles[WQ_CASTLE]))
-					posPtr->castles[WQ_CASTLE] = posPtr->moves;
-				break;
-			case S_H1:
-				posPtr->flags &= ~WHITE_KINGSIDE_CASTLE;
-				if (!(posPtr->castles[WK_CASTLE]))
-					posPtr->castles[WK_CASTLE] = posPtr->moves;
-				break;
-			case S_A8:
-				posPtr->flags &= ~BLACK_QUEENSIDE_CASTLE;
-				if (!(posPtr->castles[BQ_CASTLE]))
-					posPtr->castles[BQ_CASTLE] = posPtr->moves;
-				break;
-			case S_H8:
-				posPtr->flags &= ~BLACK_KINGSIDE_CASTLE;
-				if (!(posPtr->castles[BK_CASTLE]))
-					posPtr->flags[BK_CASTLE] = posPtr->moves;
-				break;
-			}
+		switch (end) {
+		case S_A1:
+			posPtr->flags &= ~WHITE_QUEENSIDE_CASTLE;
+			if (!(posPtr->castles[WQ_CASTLE]))
+				posPtr->castles[WQ_CASTLE] = posPtr->moves;
+			break;
+		case S_H1:
+			posPtr->flags &= ~WHITE_KINGSIDE_CASTLE;
+			if (!(posPtr->castles[WK_CASTLE]))
+				posPtr->castles[WK_CASTLE] = posPtr->moves;
+			break;
+		case S_A8:
+			posPtr->flags &= ~BLACK_QUEENSIDE_CASTLE;
+			if (!(posPtr->castles[BQ_CASTLE]))
+				posPtr->castles[BQ_CASTLE] = posPtr->moves;
+			break;
+		case S_H8:
+			posPtr->flags &= ~BLACK_KINGSIDE_CASTLE;
+			if (!(posPtr->castles[BK_CASTLE]))
+				posPtr->flags[BK_CASTLE] = posPtr->moves;
+			break;
 		}
 	}
 	posPtr->flags &= ~EN_PASSANT | ~EP_SQUARE;
@@ -240,6 +240,8 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 			break;
 		}
 	}
+	if (piece == KING)
+		posPtr->kingpos[color] = start;
 	if (posPtr->fiftymove != 0)
 		--posPtr->fiftymove;
 	if (mv & CAPTURE_MOVE) {

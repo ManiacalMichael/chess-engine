@@ -681,13 +681,12 @@ uint64_t queen_moves(uint64_t occupied, int rank, int file)
 
 uint16_t check_status(const struct position_t pos)
 {
-	int brank, bfile, wrank, wfile;
 	uint64_t occupied = pos.occupied;
 	uint16_t ret = 0;
-	brank = pos.kingpos[BLACK] / 8;
-	bfile = pos.kingpos[BLACK] % 8;
-	wrank = pos.kingpos[WHITE] / 8;
-	wfile = pos.kingpos[WHITE] % 8;
+	int brank = pos.kingpos[BLACK] / 8;
+	int bfile = pos.kingpos[BLACK] % 8;
+	int wrank = pos.kingpos[WHITE] / 8;
+	int wfile = pos.kingpos[WHITE] % 8;
 	if (rook_moves(occupied, wrank, wfile) & (pos.pieces[BLACK][ROOK]
 				| pos.pieces[BLACK][QUEEN])) {
 		ret |= WHITE_CHECK;
@@ -735,17 +734,75 @@ uint64_t castle_moves(struct position_t pos)
 	int kingpos = color ? S_E8 : S_E1;
 	if ((pos.flags & BOTH_KINGSIDE_CASTLE) && !(pos.occupied &
 				(3ull << kingpos))) {
-		make_move(pos, color ? 0x2fbc : 0x2184);
+		make_move(&pos, color ? 0x2fbc : 0x2184);
 		if (!(pos.flags & friendly_check))
 			attk |= 1ull << (color ? S_G8 : S_G1 );
-		unmake_move(pos, color ? 0x2fbc : 0x2184);
+		unmake_move(&pos, color ? 0x2fbc : 0x2184);
 	}
 	if ((pos.flags & BOTH_QUEENSIDE_CASTLE) && !(pos.occupied &
 				(14ull << (color * S_A8)))) {
-		make_move(pos, color ? 0x3ebc: 0x3084);
+		make_move(&pos, color ? 0x3ebc: 0x3084);
 		if (!(pos.flags & friendly_check))
 			attk |= 1ull << (color ? S_C8 : S_C1 );
 	}
 	return attk;
 }
 
+void serialize_moves(int start, uint64_t attk, const struct position_t pos,
+		uint16_t *lsPtr)
+{
+	int color = (pos.flags & WHITE_TO_MOVE) ? WHITE : BLACK;
+	int length = lsPtr[0];
+	uint64_t startbb = 1ull << start;
+	int end;
+	uint64_t endbb;
+	int pt;
+	uint16_t tmp;
+	if (attk == 0)
+		return;
+	for (int i = PAWN; i <= KING; i++) {
+		if (pos.pieces[color][i] & startbb) {
+			pt = i;
+			break;
+		}
+	}
+	while (attk != 0) {
+		end = ls1bindice(attk);
+		endbb = 1ull << end;
+		attk &= attk - 1;
+		++length;
+		tmp = start | (end << 6);
+		if (pos.occupied & endbb)
+			tmp |= CAPTURE_MOVE;
+		switch (pt) {
+		case PAWN:
+			if (end == (color ? (start - 16) : (start + 16))) {
+				tmp |= DOUBLE_PAWN_PUSH;
+				break;
+			}
+			if (end == (pos.flags & EP_SQUARE)) {
+				tmp |= CAPTURE_MOVE;
+				tmp |= EP_CAPTURE;
+				break;
+			}
+			if ((end / 8) == (color ? RANK_1 : RANK_8)) {
+				lsPtr[length++] = tmp | KNIGHT_PROMOTION;
+				lsPtr[length++] = tmp | BISHOP_PROMOTION;
+				lsPtr[length++] = tmp | ROOK_PROMOTION;
+				tmp |= QUEEN_PROMOTION;
+				break;
+			}
+			break;
+		case KING:
+			if (end == (start + 2)) {
+				tmp |= KINGSIDE_CASTLE;
+				break;
+			}
+			if (end == (start - 2)) 
+				tmp |= QUEENSIDE_CASTLE;
+			break;
+		}
+		lsPtr[length] = tmp;
+	}
+	lsPtr[0] = length;
+}
