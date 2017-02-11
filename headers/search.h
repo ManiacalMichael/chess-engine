@@ -86,9 +86,9 @@ uint16_t check_status(const struct position_t pos);
 /*
  * uint64_t castle_moves()
  * Returns attack set of a king for castling only
- * 	@posPtr - pointer to the position to generate moves for
+ * 	@pos - Position to generate moves for
  */
-uint64_t castle_moves(struct position_t *posPtr);
+uint64_t castle_moves(struct position_t pos);
 
 /*
  * void serialize_moves()
@@ -108,7 +108,7 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
  * 	@pos - Position to generate moves for
  * 	@lsPtr - Pointer to the movelist to use
  */
-void generate_moves(struct position_t pos, uint16_t *lsPtr);
+void generate_moves(const struct position_t pos, uint16_t *lsPtr);
 
 /*
  * int perft()

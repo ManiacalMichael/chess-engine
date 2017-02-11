@@ -630,11 +630,11 @@ uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
 {
 	uint64_t r = 0ull;
 	if ((sq / 8) == (color ? 6 : 1)) {
-		if (!(pawn_twosquare[color][sq % 8] & ~empty))
-			r |= pawn_movement[(color) ? (sq - 8) : (sq + 8)];
+		if (!(pawn_doublepush[color][sq % 8] & ~empty))
+			r |= pawn_movement[color][color ? (sq - 8) : (sq + 8)];
 	}
 	r |= pawn_movement[color][sq] & empty;
-	r |= pawn_captures[color][sq] & enemy;
+	r |= pawn_attacks[color][sq] & enemy;
 	return r;
 }
 
@@ -692,16 +692,19 @@ uint16_t check_status(const struct position_t pos)
 		ret |= WHITE_CHECK;
 		goto test_black;
 	} else if (bishop_moves(occupied, wrank, wfile) & (pos.pieces[BLACK][BISHOP]
-				| pos.black_pieces[QUEEN])) {
+				| pos.pieces[BLACK][QUEEN])) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (knight_attack_lookups[wking] & pos.pieces[BLACK][KNIGHT]) {
+	} else if (knight_attack_lookups[pos.kingpos[WHITE]] &
+				pos.pieces[BLACK][KNIGHT]) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (pawn_captures[WHITE][wking] & pos.pieces[BLACK][PAWN]) {
+	} else if (pawn_attacks[WHITE][pos.kingpos[WHITE]]
+				& pos.pieces[BLACK][PAWN]) {
 		ret |= WHITE_CHECK;
 		goto test_black;
-	} else if (king_attack_lookups[wking] & pos.pieces[BLACK][KING]) {
+	} else if (king_attack_lookups[pos.kingpos[WHITE]]
+				& pos.pieces[BLACK][KING]) {
 		ret |= WHITE_CHECK;
 	}
 test_black:
@@ -713,13 +716,16 @@ test_black:
 				| pos.pieces[WHITE][QUEEN])) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (knight_attack_lookups[bking] & pos.pieces[WHITE][KNIGHT]) {
+	} else if (knight_attack_lookups[pos.kingpos[BLACK]]
+				& pos.pieces[WHITE][KNIGHT]) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (pawn_captures[BLACK][bking] & pos.pieces[WHITE][PAWN]) {
+	} else if (pawn_attacks[BLACK][pos.kingpos[BLACK]]
+				& pos.pieces[WHITE][PAWN]) {
 		ret |= BLACK_CHECK;
 		return ret;
-	} else if (king_attack_lookups[bking] & pos.pieces[WHITE][KING]) {
+	} else if (king_attack_lookups[pos.kingpos[BLACK]]
+				& pos.pieces[WHITE][KING]) {
 		ret |= BLACK_CHECK;
 	}
 	return ret;
@@ -760,7 +766,7 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 	uint16_t tmp;
 	if (attk == 0)
 		return;
-	for (int i = PAWN; i <= KING; i++) {
+	for (int i = PAWN; i <= KING; ++i) {
 		if (pos.pieces[color][i] & startbb) {
 			pt = i;
 			break;
@@ -805,4 +811,60 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 		lsPtr[length] = tmp;
 	}
 	lsPtr[0] = length;
+}
+
+void generate_moves(const struct position_t pos, uint16_t *lsPtr)
+{
+	int color = (pos.flags & WHITE_TO_MOVE) ? WHITE : BLACK;
+	int sq = 0;
+	uint64_t pbb = 0;
+	uint64_t attk = 0;
+	uint64_t enemy = pos.pieces[BLACK - color][0];
+	uint64_t friendly = pos.pieces[color][0];
+	pbb = pos.pieces[color][PAWN];
+	while (pbb != 0) {
+		sq = ls1bindice(pbb);
+		attk = pawn_moves(enemy, pos.empty, color, sq);
+		attk &= friendly;
+		serialize_moves(sq, attk, pos, lsPtr);
+		pbb &= pbb - 1;
+	}
+	pbb = pos.pieces[color][BISHOP];
+	while (pbb != 0) {
+		sq = ls1bindice(pbb);
+		attk = bishop_moves(pos.occupied, sq / 8, sq % 8);
+		attk &= friendly;
+		serialize_moves(sq, attk, pos, lsPtr);
+		pbb &= pbb - 1;
+	}
+	pbb = pos.pieces[color][KNIGHT];
+	while (pbb != 0) {
+		sq = ls1bindice(pbb);
+		attk = knight_attack_lookups[sq];
+		attk &= friendly;
+		serialize_moves(sq, attk, pos, lsPtr);
+		pbb &= pbb - 1;
+	}
+	pbb = pos.pieces[color][ROOK];
+	while (pbb != 0) {
+		sq = ls1bindice(pbb);
+		attk = rook_moves(pos.occupied, sq / 8, sq % 8);
+		attk &= friendly;
+		serialize_moves(sq, attk, pos, lsPtr);
+		pbb &= pbb - 1;
+	}
+	pbb = pos.pieces[color][QUEEN];
+	while (pbb != 0) {
+		sq = ls1bindice(pbb);
+		attk = queen_moves(pos.occupied, sq / 8, sq % 8);
+		attk &= friendly;
+		serialize_moves(sq, attk, pos, lsPtr);
+		pbb &= pbb - 1;
+	}
+	sq = ls1bindice(pos.pieces[color][KING]);
+	attk = king_attack_lookups[sq];
+	attk &= friendly;
+	serialize_moves(sq, attk, pos, lsPtr);
+	if (pos.flags & BOTH_BOTH_CASTLE)
+		serialize_moves(sq, castle_moves(pos), pos, lsPtr);
 }

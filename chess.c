@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "chess.h"
+#include "headers/chess.h"
 
 static const struct position_t START_POSITION = { 
 	.pieces = {
