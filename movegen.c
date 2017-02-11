@@ -629,7 +629,7 @@ const uint64_t pawn_attacks[2][64] = {
 uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
 {
 	uint64_t r = 0ull;
-	if ((sq / 8) == 1) {
+	if ((sq / 8) == (color ? 6 : 1)) {
 		if (!(pawn_twosquare[color][sq % 8] & ~empty))
 			r |= pawn_movement[(color) ? (sq - 8) : (sq + 8)];
 	}
@@ -705,7 +705,7 @@ uint16_t check_status(const struct position_t pos)
 	} else if (king_attack_lookups[wking] & pos.pieces[BLACK][KING]) {
 		ret |= WHITE_CHECK;
 	}
-	test_black:
+test_black:
 	if (rook_moves(occupied, brank, bfile) & (pos.pieces[WHITE][ROOK]
 				| pos.pieces[WHITE][QUEEN])) {
 		ret |= BLACK_CHECK;
@@ -733,12 +733,19 @@ uint64_t castle_moves(struct position_t pos)
 	int color = (pos.flags & WHITE_TO_MOVE) ? WHITE : BLACK;
 	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
 	int kingpos = color ? S_E8 : S_E1;
-	if (pos.flags & BOTH_KINGSIDE_CASTLE) {
+	if ((pos.flags & BOTH_KINGSIDE_CASTLE) && !(pos.occupied &
+				(3ull << kingpos))) {
+		make_move(pos, color ? 0x2fbc : 0x2184);
+		if (!(pos.flags & friendly_check))
+			attk |= 1ull << (color ? S_G8 : S_G1 );
+		unmake_move(pos, color ? 0x2fbc : 0x2184);
 	}
-	if (pos.flags & BOTH_QUEENSIDE_CASTLE) {
+	if ((pos.flags & BOTH_QUEENSIDE_CASTLE) && !(pos.occupied &
+				(14ull << (color * S_A8)))) {
+		make_move(pos, color ? 0x3ebc: 0x3084);
+		if (!(pos.flags & friendly_check))
+			attk |= 1ull << (color ? S_C8 : S_C1 );
 	}
-	r = color ? (serialize_moves(S_E8, attk, &posPtr->board)) :
-		(serialize_moves(S_E1, attk, &posPtr->board));
-	return r;
+	return attk;
 }
 

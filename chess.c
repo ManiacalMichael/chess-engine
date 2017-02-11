@@ -27,11 +27,36 @@ static const struct position_t START_POSITION = {
 	.captures = { 0 };
 	.kingpos = { 4, 60 };
 	.ep_history = { { 0 } };
+	.castles = { 0, 0, 0, 0 };
 	.flags = 0x8780u,	
 	.moves = 0,	
 	.fiftymove = 0
 };
 
+
+void push_ep(struct position_t *posPtr, int sq)
+{
+	posPtr->ep_history[0][++posPtr->ep_history[0][0]] = sq;
+	posPtr->ep_history[1][posPtr->ep_history[0][0]] = posPtr->moves;
+}
+
+int pop_ep(struct position_t *posPtr)
+{
+	if (posPtr->ep_history[1][posPtr->ep_history[0][0]] != posPtr->moves) 
+		return 0;
+	return posPtr->ep_history[0][posPtr->ep_history[0][0]--];
+}
+
+void push_capture(struct position_t *posPtr, int pt)
+{
+	++posPtr->captures[0];
+	posPtr->captures[posPtr->captures[0]] = pt;
+}
+
+int pop_capture(struct position_t *posPtr)
+{
+	return posPtr->captures[posPtr->captures[0]--];
+}
 
 int popcount(uint64_t bb)
 {
@@ -64,6 +89,7 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 	uint64_t endbb = 1ull << end;
 	int color = (posPtr->flags & WHITE_TO_MOVE) ? (WHITE) : (BLACK);
 	int piece;
+	++posPtr->moves;
 	for (int i = PAWN; i =< KING; ++i) {
 		if (posPtr->pieces[color][i] & startbb) {
 			piece = i;
@@ -80,17 +106,43 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 		for (int i = PAWN; i =< KING; ++i) {
 			if (posPtr->pieces[BLACK - color][i] & endbb) {
 				posPtr->pieces[BLACK - color][i] ^= endbb;
-				++posPtr->captures[0];
-				posPtr->captures[posPtr->captures[0]] = 
-					(i * 2) + (BLACK - color);
 				posPtr->pieces[BLACK - color][0] ^= endbb;
+				push_capture(posPtr, i);
+				break;
+			}
+		}
+		if (posPtr->flags & BOTH_BOTH_CASTLE) {
+			switch (end) {
+			case S_A1:
+				posPtr->flags &= ~WHITE_QUEENSIDE_CASTLE;
+				if (!(posPtr->castles[WQ_CASTLE]))
+					posPtr->castles[WQ_CASTLE] = posPtr->moves;
+				break;
+			case S_H1:
+				posPtr->flags &= ~WHITE_KINGSIDE_CASTLE;
+				if (!(posPtr->castles[WK_CASTLE]))
+					posPtr->castles[WK_CASTLE] = posPtr->moves;
+				break;
+			case S_A8:
+				posPtr->flags &= ~BLACK_QUEENSIDE_CASTLE;
+				if (!(posPtr->castles[BQ_CASTLE]))
+					posPtr->castles[BQ_CASTLE] = posPtr->moves;
+				break;
+			case S_H8:
+				posPtr->flags &= ~BLACK_KINGSIDE_CASTLE;
+				if (!(posPtr->castles[BK_CASTLE]))
+					posPtr->flags[BK_CASTLE] = posPtr->moves;
 				break;
 			}
 		}
 	}
-	if (posPtr->flags & EN_PASSANT)
-		posPtr->flags &= ~EN_PASSANT;
+	posPtr->flags &= ~EN_PASSANT | ~EP_SQUARE;
 	switch (mv & CAPTURE_QUEEN_PROMOTION) {
+	case DOUBLE_PAWN_PUSH:
+		posPtr->flags |= EN_PASSANT;
+		posPtr->flags |= color ? (end + 8) : (end - 8);
+		push_ep(posPtr, color ? (end + 8) : (end - 8) );
+		break;
 	case KINGSIDE_CASTLE:
 		posPtr->pieces[color][ROOK] ^= 5ull << (start + 1);
 		posPtr->pieces[color][0] ^= 5ull << start;
@@ -105,8 +157,7 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 				(end + 8) : (end - 8));
 		posPtr->pieces[BLACK - color][0] ^= 1ull << ((color) ?
 				(end + 8) : (end - 8));
-		++posPtr->captures[0];
-		posPtr->captures[posPtr->captures[0]] = WHITE_PAWN + color;
+		push_capture(posPtr, PAWN);
 		break;
 	case KNIGHT_CAPTURE_PROMOTION:
 	case KNIGHT_PROMOTION:
@@ -125,13 +176,49 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 		piece = QUEEN;
 		break;
 	}
+	if (posPtr->flags & BOTH_BOTH_CASTLE) {
+		switch (start) {
+		case S_A1:
+			posPtr->flags &= ~WHITE_QUEENSIDE_CASTLE;
+			if (!(posPtr->castles[WQ_CASTLE]))
+				posPtr->castles[WQ_CASTLE] = posPtr->moves;
+			break;
+		case S_E1:
+			posPtr->flags &= ~WHITE_BOTH_CASTLE;
+			if (!(posPtr->castles[WK_CASTLE]))
+				posPtr->castles[WK_CASTLE] = posPtr->moves;
+			if (!(posPtr->castles[WQ_CASTLE]))
+				posPtr->castles[WQ_CASTLE] = posPtr->moves;
+			break;
+		case S_H1:
+			posPtr->flags &= ~WHITE_KINGSIDE_CASTLE;
+			if (!(posPtr->castles[WK_CASTLE]))
+				posPtr->castles[WK_CASTLE] = posPtr->moves;
+		case S_A8:
+			posPtr->flags &= ~BLACK_QUEENSIDE_CASTLE;
+			if (!(posPtr->castles[BQ_CASTLE]))
+				posPtr->castles[BQ_CASTLE] = posPtr->moves;
+			break;
+		case S_E8:
+			posPtr->flags &= ~BLACK_BOTH_CASTLE;
+			if (!(posPtr->castles[BK_CASTLE]))
+				posPtr->castles[BK_CASTLE] = posPtr->moves;
+			if (!(posPtr->castles[BQ_CASTLE]))
+				posPtr->castles[BQ_CASTLE] = posPtr->moves;
+			break;
+		case S_H8:
+			posPtr->flags &= ~BLACK_KINGSIDE_CASTLE;
+			if (!(posPtr->castles[BK_CASTLE]))
+				posPtr->castles[BK_CASTLE] = posPtr->moves;
+			break;
+		}
+	}
 	posPtr->pieces[color][piece] ^= endbb;
 	posPtr->pieces[color][0] ^= endbb;
 	posPtr->occupied = posPtr->pieces[WHITE][0] | posPtr->pieces[BLACK][0];
 	posPtr->empty = ~posPtr->occupied;
 	posPtr->flags &= ~(WHITE_CHECK | BLACK_CHECK);
 	posPtr->flags |= check_status(*posPtr);
-	++posPtr->moves;
 	posPtr->flags ^= WHITE_TO_MOVE;
 }
 
@@ -144,6 +231,7 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 	/* these are supposed to be backwards; it's the player to 'unmove' */
 	int color = (posPtr->flags & WHITE_TO_MOVE) ? (BLACK) : (WHITE);
 	int piece;
+	int epsq;
 	for (int i = PAWN; i =< KING; ++i) {
 		if (posPtr->pieces[color][i] & endbb) {
 			piece = i;
@@ -155,15 +243,14 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 	if (posPtr->fiftymove != 0)
 		--posPtr->fiftymove;
 	if (mv & CAPTURE_MOVE) {
-		/* loop *should* do nothing for e.p. captures */
-		for (int i = PAWN; i =< KING; ++i) {
-			if (posPtr->pieces[BLACK - color][i] & endbb) {
-				posPtr->pieces[BLACK - color][i] ^= endbb;
-				--posPtr->captures[0];
-				posPtr->pieces[BLACK - color][0] ^= endbb;
-				break;
-			}
-		}
+		posPtr->pieces[BLACK - color][pop_capture(posPtr)] |= endbb;
+		posPtr->pieces[BLACK - color][0] |= endbb;
+	}
+	if (epsq = pop_ep(posPtr)) {
+		posPtr->flags |= EN_PASSANT;
+		posPtr->flags |= epsq;
+	} else {
+		posPtr->flags &= ~EN_PASSANT | ~EP_SQUARE;
 	}
 	switch (mv & CAPTURE_QUEEN_PROMOTION) {
 	case KINGSIDE_CASTLE:
@@ -171,16 +258,10 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 		posPtr->pieces[color][0] ^= 5ull << start;
 		break;
 	case QUEENSIDE_CASTLE:
-		/* if black, shifts these values up to the eighth rank */
 		posPtr->pieces[color][ROOK] ^= 9ull << (color * S_A8);
 		posPtr->pieces[color][0] ^= 9ull << (color * S_A8);
 		break;
 	case EP_CAPTURE:
-		posPtr->pieces[BLACK - color][PAWN] ^= 1ull << ((color) ?
-				(end + 8) : (end - 8));
-		posPtr->pieces[BLACK - color][0] ^= 1ull << ((color) ?
-				(end + 8) : (end - 8));
-		--posPtr->captures[0];
 		break;
 	case KNIGHT_CAPTURE_PROMOTION:
 	case KNIGHT_PROMOTION:
@@ -193,13 +274,19 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 		piece = PAWN;
 		break;
 	}
+	for (int i = 0; i <= BQ_CASTLE; ++i) {
+		if (posPtr->castles[i] == posPtr->moves) {
+			posPtr->flags |= 1 << (7 + i);
+			posPtr->castles[i] = 0;
+		}
+	}
+	--posPtr->moves;
 	posPtr->pieces[color][piece] ^= startbb;
 	posPtr->pieces[color][0] ^= startbb;
 	posPtr->occupied = posPtr->pieces[WHITE][0] | posPtr->pieces[BLACK][0];
 	posPtr->empty = ~posPtr->occupied;
 	posPtr->flags &= ~(WHITE_CHECK | BLACK_CHECK);
 	posPtr->flags |= check_status(*posPtr);
-	--posPtr->moves;
 	posPtr->flags ^= WHITE_TO_MOVE;
 }
 

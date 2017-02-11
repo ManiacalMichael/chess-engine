@@ -85,7 +85,7 @@ uint16_t check_status(const struct position_t pos);
 
 /*
  * uint64_t castle_moves()
- * Returns attack set of a king for castling
+ * Returns attack set of a king for castling only
  * 	@posPtr - pointer to the position to generate moves for
  */
 uint64_t castle_moves(struct position_t *posPtr);

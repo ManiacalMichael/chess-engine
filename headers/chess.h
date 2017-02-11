@@ -42,6 +42,10 @@ enum PIECES {
 	WHITE_KING, BLACK_KING
 };
 
+enum CASTLETYPES {
+	WK_CASTLE, WQ_CASTLE, BK_CASTLE, BQ_CASTLE
+};
+
 /*
  * Little Endian Rank File numbering
  */
@@ -91,6 +95,7 @@ enum FILES {
  * 	            [0][0] = number of e.p. squares recorded
  * 	            [0][x] = square where e.p. was set
  * 	            [1][x] = halfmove when e.p. was set
+ * 	castles: record of when castle rights were lost
  * 	flags: Position flags, see #defines for more information
  * 	moves: Age of position, in halfmoves from start position
  * 	fiftymove: Number of halfmoves since an irreversible move took place
@@ -101,7 +106,8 @@ struct position_t {
 	uint64_t empty;
 	unsigned char captures[31];
 	unsigned char kingpos[2];
-	unsigned ep_history[2][17];
+	unsigned short ep_history[2][17];
+	unsigned short castles[4];
 	uint16_t flags;
 	int moves;
 	int fiftymove;
@@ -211,6 +217,36 @@ int popcount(uint64_t bb);
  * 	@bb - value to find ls1b of
  */
 int ls1bindice(uint64_t bb);
+
+/*
+ * void push_ep()
+ * Adds ep to position history
+ * 	@posPtr - pointer to position to add ep to
+ * 	@sq - square of ep to add
+ */
+void push_ep(struct position_t *posPtr, int sq);
+
+/*
+ * int pop_ep()
+ * Pops ep from ep history if position age is the most recent ep position
+ * 	@posPtr - pointer to position to use
+ */
+int pop_ep(struct position_t *posPtr);
+
+/*
+ * void push_capture()
+ * Adds capture to capture history
+ * 	@posPtr - pointer to position to use
+ * 	@pt - piecetype of captured piece
+ */
+void push_capture(struct position_t *posPtr, int pt);
+
+/*
+ * int pop_capture()
+ * Pops most recent capture from capture history
+ * 	@posPtr - pointer to position to use
+ */
+int pop_capture(struct position_t *posPtr);
 
 /*
  * void make_move()
