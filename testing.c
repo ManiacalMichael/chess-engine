@@ -45,7 +45,7 @@ void printpos(struct position_t pos)
 	for (signed i = 7; i >= 0; --i) {
 		for (int j = 0; j < 8; ++j) {
 			bb = (1ull << ((i * 8) + j));
-			display[(8 - i) + 1][2 + (2 * j)] = getpiece(pos, i, j);
+			display[8 - i][1 + (2 * j)] = getpiece(pos, i, j);
 		}
 	}
 	for (int i = 0; i < 10; ++i)
@@ -54,8 +54,8 @@ void printpos(struct position_t pos)
 
 char getpiece(const struct position_t pos, int i, int j)
 {
-	char whitepieces[6] = { 'P', 'N', 'B', 'R', 'Q', 'K' };
-	char blackpieces[6] = { 'p', 'n', 'b', 'r', 'q', 'k' };
+	char whitepieces[7] = { '%', 'P', 'N', 'B', 'R', 'Q', 'K' };
+	char blackpieces[7] = { '%', 'p', 'n', 'b', 'r', 'q', 'k' };
 	uint64_t bb = 0;
 	bb = 1ull << ((i * 8) + j);
 	if (pos.occupied & bb) {
