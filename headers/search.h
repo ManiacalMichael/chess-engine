@@ -111,12 +111,12 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 void generate_moves(const struct position_t pos, uint16_t *lsPtr);
 
 /*
- * int perft()
+ * unsigned long long perft()
  * Recursively calculates the number of valid movepaths at a certain depth
  * 	@posPtr - Position to test
  * 	@depth - Depth to search
  */
-int perft(struct position_t *posPtr, int depth);
+unsigned long long perft(struct position_t *posPtr, int depth);
 
 /*
  * signed evaluate()

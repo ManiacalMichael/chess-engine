@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "headers/chess.h"
 
-static const struct position_t START_POSITION = { 
+const struct position_t START_POSITION = { 
 	.pieces = {
 		{
 			0x000000000000ffffull,
@@ -24,10 +24,10 @@ static const struct position_t START_POSITION = {
 	},
 	.occupied = 0xffff00000000ffffull,
 	.empty = 0x0000ffffffff0000ull,
-	.captures = { 0 };
-	.kingpos = { 4, 60 };
-	.ep_history = { { 0 } };
-	.castles = { 0, 0, 0, 0 };
+	.captures = { 0 },
+	.kingpos = { 4, 60 },
+	.ep_history = { { 0 } },
+	.castles = { 0, 0, 0, 0 },
 	.flags = 0x8780u,	
 	.moves = 0,	
 	.fiftymove = 0
@@ -77,7 +77,7 @@ int ls1bindice(uint64_t bb)
 		9, 61, 27, 29, 50, 43, 46, 31, 37, 21, 57, 52, 8, 26,
 		49, 45, 36, 56, 7, 48, 35, 6, 34, 33
 	};
-	bb ^= (bb & (bb - 1))
+	bb ^= (bb & (bb - 1));
 	return arr[bb % 67];
 }
 
@@ -90,7 +90,7 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 	int color = (posPtr->flags & WHITE_TO_MOVE) ? (WHITE) : (BLACK);
 	int piece;
 	++posPtr->moves;
-	for (int i = PAWN; i =< KING; ++i) {
+	for (int i = PAWN; i <= KING; ++i) {
 		if (posPtr->pieces[color][i] & startbb) {
 			piece = i;
 			posPtr->pieces[color][piece] ^= startbb;
@@ -105,7 +105,7 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 	if (mv & CAPTURE_MOVE) {
 		posPtr->fiftymove = 0;
 		/* loop *should* do nothing for e.p. captures */
-		for (int i = PAWN; i =< KING; ++i) {
+		for (int i = PAWN; i <= KING; ++i) {
 			if (posPtr->pieces[BLACK - color][i] & endbb) {
 				posPtr->pieces[BLACK - color][i] ^= endbb;
 				posPtr->pieces[BLACK - color][0] ^= endbb;
@@ -132,12 +132,12 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 		case S_H8:
 			posPtr->flags &= ~BLACK_KINGSIDE_CASTLE;
 			if (!(posPtr->castles[BK_CASTLE]))
-				posPtr->flags[BK_CASTLE] = posPtr->moves;
+				posPtr->castles[BK_CASTLE] = posPtr->moves;
 			break;
 		}
 	}
 	posPtr->flags &= ~EN_PASSANT | ~EP_SQUARE;
-	switch (mv & CAPTURE_QUEEN_PROMOTION) {
+	switch (mv & QUEEN_CAPTURE_PROMOTION) {
 	case DOUBLE_PAWN_PUSH:
 		posPtr->flags |= EN_PASSANT;
 		posPtr->flags |= color ? (end + 8) : (end - 8);
@@ -232,7 +232,7 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 	int color = (posPtr->flags & WHITE_TO_MOVE) ? (BLACK) : (WHITE);
 	int piece;
 	int epsq;
-	for (int i = PAWN; i =< KING; ++i) {
+	for (int i = PAWN; i <= KING; ++i) {
 		if (posPtr->pieces[color][i] & endbb) {
 			piece = i;
 			posPtr->pieces[color][piece] ^= endbb;
@@ -255,7 +255,7 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 	} else {
 		posPtr->flags &= ~EN_PASSANT | ~EP_SQUARE;
 	}
-	switch (mv & CAPTURE_QUEEN_PROMOTION) {
+	switch (mv & QUEEN_CAPTURE_PROMOTION) {
 	case KINGSIDE_CASTLE:
 		posPtr->pieces[color][ROOK] ^= 5ull << (start + 1);
 		posPtr->pieces[color][0] ^= 5ull << start;

@@ -1,147 +1,86 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include "headers/chess.h"
-#include "headers/utility.h"
 #include "headers/search.h"
 #include "headers/testpos.h"
 
-bool find_move(struct movelist_t, uint32_t);
+char getpiece(const struct position_t, int, int);
 
 void printpos(struct position_t);
 
-unsigned long long perft(struct position_t, int);
-
 int main(void)
 {
-	printf("Starting perft tests\n");
-	printf("Start position:\n");
-	printf("%s%d%s", "Perft(1): Expected 20 Actual ",
-			perft(START_POSITION, 1), "\n");
-	printf("%s%d%s", "Perft(2): Expected 400 Actual ", 
-			perft(START_POSITION, 2), "\n");
-	printf("%s%d%s", "Perft(3): Expected 8092 Actual ", 
-			perft(START_POSITION, 3), "\n");
-	printf("%s%d%s", "Perft(4): Expected 197281 Actual ", 
-			perft(START_POSITION, 4), "\n");
-	printf("Test position 1\n");
+	struct position_t testpos = START_POSITION;
+	printf("%s", "Starting perft tests\n");
+	printf("%s", "Start Position:\n");
+	printpos(testpos);
+	for (int i = 1; i <= 4; ++i) 
+		printf("%s%d%s%d%s%d\n", "Depth(", i,
+				") Expected value ", start_position_expected[i],
+				" Actual value ", perft(&testpos, i));
+	testpos = perft1;
+	printf("%s", "Perft 1 test position:\n");
 	printpos(perft1);
-	printf("%s%d%s", "Perft(1): Expected 48 Actual ",
-			perft(perft1, 1), "\n");
-	printf("%s%d%s", "Perft(2): Expected 2039 Actual ",
-			perft(perft1, 2), "\n");
-	printf("%s%d%s", "Perft(3): Expected 97862 Actual ",
-			perft(perft1, 3), "\n");
-	printf("%s%d%s", "Perft(4): Expected 4085603 Actual ",
-			perft(perft1, 4), "\n");
+	for (int i = 1; i <= 4; ++i) 
+		printf("%s%d%s%d%s%d\n", "Depth(", i,
+				") Expected value ", perft1_expected[i],
+				" Actual value ", perft(&testpos, i));
 	return 0;
-}
-
-unsigned long long perft(struct position_t pos, int depth)
-{
-	struct movelist_t ls = generate_moves(&pos);
-	struct movenode_t *p = ls.root;
-	struct position_t testpos = pos;
-	int r = 0;
-	if (depth == 0) {
-		delete_list(&ls);
-		return 1;
-	}
-	while (p != NULL) {
-		make_move(&testpos, p->move);
-		r += perft(testpos, depth - 1);
-		testpos = pos;
-		p = p->nxt;
-	}
-	delete_list(&ls);
-	return r;
-}
-
-bool find_move(struct movelist_t ls, uint32_t mv)
-{
-	struct movenode_t *p = ls.root;
-	if (p == NULL)
-		return false;
-	while (p != NULL) {
-		if (p->move == mv)
-			return true;
-		p = p->nxt;
-	}
-	return false;
 }
 
 void printpos(struct position_t pos)
 {
-	int k;
-	printf("%s", " ---------------\n");
-	for(int i = 7; i >= 0; i--) {
-		printf("%c", '|');
-		for(int j = 0; j < 8; j++) {
-			k = (i * 8) + j;
-			if (pos.board.black_pieces & (1ull << k)) {
-				if (pos.board.pawns & (1ull << k))
-					printf("%c", 'p');
-				else if (pos.board.knights & (1ull << k))
-					printf("%c", 'n');
-				else if (pos.board.bishops & (1ull << k))
-					printf("%c", 'b');
-				else if (pos.board.rooks & (1ull << k))
-					printf("%c", 'r');
-				else if (pos.board.queens & (1ull << k))
-					printf("%c", 'q');
-				else if (pos.board.kings & (1ull << k))
-					printf("%c", 'k');
-				else
-					printf("%c", '%');
-			} else if (pos.board.occupied & (1ull << k)) {
-				if (pos.board.pawns & (1ull << k))
-					printf("%c", 'P');
-				else if (pos.board.knights & (1ull << k))
-					printf("%c", 'N');
-				else if (pos.board.bishops & (1ull << k))
-					printf("%c", 'B');
-				else if (pos.board.rooks & (1ull << k))
-					printf("%c", 'R');
-				else if (pos.board.queens & (1ull << k))
-					printf("%c", 'Q');
-				else if (pos.board.kings & (1ull << k))
-					printf("%c", 'K');
-				else
-					printf("%c", '%');
-			} else
-				printf("%c", '.');
-			printf("%c", ' ');
+	char display[10][19] = {
+		"#################\n",
+		"#% % % % % % % %#\n",
+		"#% % % % % % % %#\n",
+		"#% % % % % % % %#\n",
+		"#% % % % % % % %#\n",
+		"#% % % % % % % %#\n",
+		"#% % % % % % % %#\n",
+		"#% % % % % % % %#\n",
+		"#% % % % % % % %#\n",
+		"#################\n"
+	};
+	uint64_t bb = 0;
+	for (signed i = 7; i >= 0; --i) {
+		for (int j = 0; j < 8; ++j) {
+			bb = (1ull << ((i * 8) + j));
+			display[(8 - i) + 1][2 + (2 * j)] = getpiece(pos, i, j);
 		}
-		printf("%s", "|\n");
 	}
-	printf("%s", " ---------------\n");
-	/*
-	if (pos.flags & EN_PASSANT) {
-		printf("%s", "e.p. capture available on sq#");
-		printf("%d\n", (pos.flags & EP_SQUARE) >> 1);
-	}
-	if (pos.flags & BOTH_BOTH_CASTLE) {
-		if (pos.flags & WHITE_KINGSIDE_CASTLE)
-			printf("%c", 'W');
-		if (pos.flags & WHITE_QUEENSIDE_CASTLE)
-			printf("%c", 'w');
-		if (pos.flags & BLACK_KINGSIDE_CASTLE)
-			printf("%c", 'B');
-		if (pos.flags & BLACK_QUEENSIDE_CASTLE)
-			printf("%c", 'b');
-		printf("%c", '\n');
-	}
-	if (pos.flags & BLACK_CHECK)
-		printf("%s", "Black is in check\n");
-	if (pos.flags & WHITE_CHECK)
-		printf("%s", "White is in check\n");
-	if (pos.flags & GAME_OVER)
-		printf("%s", "Game is over\n");
-	if (pos.flags & GAME_DRAWN)
-		printf("%s", "Game is a draw\n");
-	if (pos.flags & WHITE_TO_MOVE)
-		printf("%s", "White's move\n");
-	else
-		printf("%s", "Black's move\n");
-	*/
+	for (int i = 0; i < 10; ++i)
+		printf("%s", display[i]);
 }
 
+char getpiece(const struct position_t pos, int i, int j)
+{
+	char whitepieces[6] = { 'P', 'N', 'B', 'R', 'Q', 'K' };
+	char blackpieces[6] = { 'p', 'n', 'b', 'r', 'q', 'k' };
+	uint64_t bb = 0;
+	bb = 1ull << ((i * 8) + j);
+	if (pos.occupied & bb) {
+		if (pos.pieces[WHITE][0] & bb) {
+			for (int k = PAWN; k <= KING; ++k) {
+				if (pos.pieces[WHITE][k] & bb)
+					return whitepieces[k];
+			}
+			return '%';
+		} else if (pos.pieces[BLACK][0] & bb) {
+			for (int k = PAWN; k <= KING; ++k) {
+				if (pos.pieces[BLACK][k] & bb)
+					return blackpieces[k];
+			}
+			return '%';
+		}
+		return '%';
+	}
+	for (int k = 0; k <= KING; ++k) {
+		if (pos.pieces[WHITE][0] & bb)
+			return '%';
+	}
+	for (int k = 0; k <= KING; ++k) {
+		if (pos.pieces[BLACK][0] & bb)
+			return '%';
+	}
+	return '.';
+}
