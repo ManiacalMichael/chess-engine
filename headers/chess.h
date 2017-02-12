@@ -253,6 +253,9 @@ int pop_capture(struct position_t *posPtr);
  * Makes a move on a position
  * 	@posPtr - pointer to the position to make the move on
  * 	@mv - move to make
+ * Assertions:
+ * 	- @mv is non-zero and not equal to ERROR_MOVE
+ * 	- (START_SQUARE & @mv) matches a piece of the side to move
  */
 void make_move(struct position_t *posPtr, uint16_t mv);
 
@@ -262,6 +265,9 @@ void make_move(struct position_t *posPtr, uint16_t mv);
  * NOTE: fiftymove counter cannot be restored after it has been reset to 0
  * 	@posPtr - pointer to the position to unmake the move on
  * 	@mv - move to unmake
+ * Assertions:
+ * 	- @mv is non-zero and not equal to ERROR_MOVE
+ * 	- (START_SQUARE & @mv) matches a piece of the side to 'unmove'
  */
 void unmake_move(struct position_t *posPtr, uint16_t mv);
 

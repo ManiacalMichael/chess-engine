@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdint.h>
 #include "headers/chess.h"
 
@@ -89,6 +90,8 @@ void make_move(struct position_t *posPtr, uint16_t mv)
 	uint64_t endbb = 1ull << end;
 	int color = (posPtr->flags & WHITE_TO_MOVE) ? (WHITE) : (BLACK);
 	int piece;
+	assert((mv != 0) && (mv != ERROR_MOVE));
+	assert(startbb & posPtr->pieces[color][0]);
 	++posPtr->moves;
 	for (int i = PAWN; i <= KING; ++i) {
 		if (posPtr->pieces[color][i] & startbb) {
@@ -232,6 +235,8 @@ void unmake_move(struct position_t *posPtr, uint16_t mv)
 	int color = (posPtr->flags & WHITE_TO_MOVE) ? (BLACK) : (WHITE);
 	int piece;
 	int epsq;
+	assert((mv != 0) && (mv != ERROR_MOVE));
+	assert(endbb & posPtr->pieces[color][0]);
 	for (int i = PAWN; i <= KING; ++i) {
 		if (posPtr->pieces[color][i] & endbb) {
 			piece = i;

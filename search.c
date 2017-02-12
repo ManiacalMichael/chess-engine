@@ -9,7 +9,8 @@ unsigned long long perft(struct position_t *posPtr, int depth)
 	movelist[0] = 0;
 	generate_moves(*posPtr, movelist);
 	for (int i = 1; i <= movelist[0]; i++) 
-		if ((movelist[i] & END_SQUARE) == posPtr->kingpos[BLACK - color])
+		if (((movelist[i] & END_SQUARE) >> 6) 
+				== posPtr->kingpos[BLACK - color])
 			return 0;
 	if (depth == 1)
 		return movelist[0];

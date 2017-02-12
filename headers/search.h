@@ -97,6 +97,8 @@ uint64_t castle_moves(struct position_t pos);
  * 	@attk - Attack set of the piece on square `sq`
  * 	@pos - position the attack set was generated from
  * 	@lsPtr - pointer to the list the moves will be added to
+ * Assertions:
+ * 	- @start matches a piece of the side to move
  */
 void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 		uint16_t *lsPtr);

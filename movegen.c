@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdint.h>
 #include "headers/chess.h"
 #include "headers/search.h"
@@ -738,14 +739,16 @@ uint64_t castle_moves(struct position_t pos)
 	int color = (pos.flags & WHITE_TO_MOVE) ? WHITE : BLACK;
 	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
 	int kingpos = color ? S_E8 : S_E1;
-	if ((pos.flags & BOTH_KINGSIDE_CASTLE) && !(pos.occupied &
+	uint16_t kflag = color ? BLACK_KINGSIDE_CASTLE : WHITE_KINGSIDE_CASTLE;
+	uint16_t qflag = color ? BLACK_QUEENSIDE_CASTLE : BLACK_KINGSIDE_CASTLE;
+	if ((pos.flags & kflag) && !(pos.occupied &
 				(3ull << kingpos))) {
 		make_move(&pos, color ? 0x2fbc : 0x2184);
 		if (!(pos.flags & friendly_check))
 			attk |= 1ull << (color ? S_G8 : S_G1 );
 		unmake_move(&pos, color ? 0x2fbc : 0x2184);
 	}
-	if ((pos.flags & BOTH_QUEENSIDE_CASTLE) && !(pos.occupied &
+	if ((pos.flags & qflag) && !(pos.occupied &
 				(14ull << (color * S_A8)))) {
 		make_move(&pos, color ? 0x3ebc: 0x3084);
 		if (!(pos.flags & friendly_check))
@@ -764,6 +767,7 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 	uint64_t endbb;
 	int pt;
 	uint16_t tmp;
+	assert(startbb & pos.pieces[color][0]);
 	if (attk == 0)
 		return;
 	for (int i = PAWN; i <= KING; ++i) {
@@ -825,7 +829,7 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
 		attk = pawn_moves(enemy, pos.empty, color, sq);
-		attk &= friendly;
+		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
@@ -833,7 +837,7 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
 		attk = bishop_moves(pos.occupied, sq / 8, sq % 8);
-		attk &= friendly;
+		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
@@ -841,7 +845,7 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
 		attk = knight_attack_lookups[sq];
-		attk &= friendly;
+		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
@@ -849,7 +853,7 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
 		attk = rook_moves(pos.occupied, sq / 8, sq % 8);
-		attk &= friendly;
+		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
@@ -857,13 +861,13 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
 		attk = queen_moves(pos.occupied, sq / 8, sq % 8);
-		attk &= friendly;
+		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
-	sq = ls1bindice(pos.pieces[color][KING]);
+	sq = pos.kingpos[color];
 	attk = king_attack_lookups[sq];
-	attk &= friendly;
+	attk &= ~friendly;
 	serialize_moves(sq, attk, pos, lsPtr);
 	if (pos.flags & BOTH_BOTH_CASTLE)
 		serialize_moves(sq, castle_moves(pos), pos, lsPtr);

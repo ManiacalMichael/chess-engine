@@ -13,14 +13,14 @@ int main(void)
 	printf("%s", "Starting perft tests\n");
 	printf("%s", "Start Position:\n");
 	printpos(testpos);
-	for (int i = 1; i <= 4; ++i) 
+	for (int i = 1; i <= 3; ++i) 
 		printf("%s%d%s%d%s%d\n", "Depth(", i,
 				") Expected value ", start_position_expected[i],
 				" Actual value ", perft(&testpos, i));
 	testpos = perft1;
 	printf("%s", "Perft 1 test position:\n");
 	printpos(perft1);
-	for (int i = 1; i <= 4; ++i) 
+	for (int i = 1; i <= 3; ++i) 
 		printf("%s%d%s%d%s%d\n", "Depth(", i,
 				") Expected value ", perft1_expected[i],
 				" Actual value ", perft(&testpos, i));
