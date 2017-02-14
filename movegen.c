@@ -740,17 +740,19 @@ uint64_t castle_moves(struct position_t pos)
 	uint16_t friendly_check = color ? BLACK_CHECK : WHITE_CHECK;
 	int kingpos = color ? S_E8 : S_E1;
 	uint16_t kflag = color ? BLACK_KINGSIDE_CASTLE : WHITE_KINGSIDE_CASTLE;
-	uint16_t qflag = color ? BLACK_QUEENSIDE_CASTLE : BLACK_KINGSIDE_CASTLE;
+	uint16_t qflag = color ? BLACK_QUEENSIDE_CASTLE : WHITE_QUEENSIDE_CASTLE;
+	if (pos.flags & friendly_check)
+		return 0;
 	if ((pos.flags & kflag) && !(pos.occupied &
-				(3ull << kingpos))) {
-		make_move(&pos, color ? 0x2fbc : 0x2184);
+				(6ull << kingpos))) {
+		make_move(&pos, color ? 0x0f7c : 0x0144);
 		if (!(pos.flags & friendly_check))
 			attk |= 1ull << (color ? S_G8 : S_G1 );
-		unmake_move(&pos, color ? 0x2fbc : 0x2184);
+		unmake_move(&pos, color ? 0x0f7c : 0x0144);
 	}
 	if ((pos.flags & qflag) && !(pos.occupied &
 				(14ull << (color * S_A8)))) {
-		make_move(&pos, color ? 0x3ebc: 0x3084);
+		make_move(&pos, color ? 0x0efc: 0x00c4);
 		if (!(pos.flags & friendly_check))
 			attk |= 1ull << (color ? S_C8 : S_C1 );
 	}
@@ -826,6 +828,8 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 	uint64_t enemy = pos.pieces[BLACK - color][0];
 	uint64_t friendly = pos.pieces[color][0];
 	pbb = pos.pieces[color][PAWN];
+	if (pos.flags & EN_PASSANT)
+		enemy ^= 1ull << (pos.flags & EP_SQUARE);
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
 		attk = pawn_moves(enemy, pos.empty, color, sq);
@@ -833,6 +837,8 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
+	if (pos.flags & EN_PASSANT)
+		enemy ^= 1ull << (pos.flags & EP_SQUARE);
 	pbb = pos.pieces[color][BISHOP];
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);

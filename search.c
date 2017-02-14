@@ -12,8 +12,8 @@ unsigned long long perft(struct position_t *posPtr, int depth)
 		if (((movelist[i] & END_SQUARE) >> 6) 
 				== posPtr->kingpos[BLACK - color])
 			return 0;
-	if (depth == 1)
-		return movelist[0];
+	if (depth == 0)
+		return 1;
 	for (int i = 1; i <= movelist[0]; i++) {
 		make_move(posPtr, movelist[i]);
 		total += perft(posPtr, depth - 1);
