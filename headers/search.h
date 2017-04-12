@@ -12,8 +12,6 @@
 #define INFINITY -32768
 #define NEG_INFINITY 32767
 
-
-
 extern const uint64_t file_masks[8];
 
 extern const uint64_t rank_masks[8];
