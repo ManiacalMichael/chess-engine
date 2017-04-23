@@ -101,6 +101,7 @@ typedef struct {
 #define END_SQUARE 0x0fc0u
 #define MOVE_FLAGS 0xf000u
 #define PAWN_MOVE 0x1000u
+#define EP_CAPTURE 0x2000u
 #define CAPTURE_MOVE 0x3000u
 #define SHORT_CASTLE 0x4000u
 #define DOUBLE_PAWN_PUSH 0x5000u
@@ -112,7 +113,7 @@ typedef struct {
 #define CAPTURE_PROMO_TO_KNIGHT 0xc000u
 #define CAPTURE_PROMO_TO_BISHOP 0xd000u
 #define CAPTURE_PROMO_TO_ROOK 0xe000u
-#define CAPTURE_PROO_TO_QUEEN 0xf000u
+#define CAPTURE_PROMO_TO_QUEEN 0xf000u
 #define IRREVERSIBLE_MOVE 0x9000u
 
 typedef struct {
