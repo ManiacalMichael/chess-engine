@@ -64,19 +64,15 @@ enum CASTLETYPES {
 	WS_CASTLE, WL_CASTLE, BS_CASTLE, BL_CASTLE
 };
 
-#define ISEMPTY(val) (val == INT_MAX)
-
-#define SETEMPTY(val) (val = INT_MAX)
-
 typedef struct {
 	uint64_t bboards[16];
 	int capturestack[30];
-	int capturetop;
+	signed capturetop;
 	int epstack[2][16];
-	int eptop;
+	signed eptop;
 	int castles[4];
 	int fiftymovestack[126];
-	int fiftymovetop;
+	signed fiftymovetop;
 	uint16_t flags;
 	int halfmove;
 	int fiftymove;
@@ -154,32 +150,32 @@ extern const position_t START_POSITION;
 
 
 /* Returns the number of set bits in a bitboard */
-int popcount(uint64_t);
+inline int popcount(uint64_t);
 
 /* Resets the LS1B of a bitboard and returns the incice of that bit */
-int popfirst(uint64_t*);
+inline int popfirst(uint64_t*);
 
 /* Returns the LS1B of a bitboard */
-int ls1bindice(uint64_t);
+inline int ls1bindice(uint64_t);
 
 
 /* Pushes a piece onto a position's capture stack */
-void pushcapture(position_t*, enum PIECES);
+inline void pushcapture(position_t*, enum PIECES);
 
 /* Pops a piece from a position's capture stack */
-enum PIECES popcapture(position_t*);
+inline enum PIECES popcapture(position_t*);
 
 /* Pushes an square onto a position's e.p. stack */
-void pushep(position_t*, enum SQUARES);
+inline void pushep(position_t*, enum SQUARES);
 
 /* Pops a square from a position's e.p. stack */
-enum SQUARES popep(position_t*);
+inline enum SQUARES popep(position_t*);
 
 /* Pushes a counter onto a position's fiftymove stack */
-void pushfifty(position_t*, int);
+inline void pushfifty(position_t*, int);
 
 /* Pops a counter from a position's fiftymove stack */
-int popfifty(position_t*);
+inline int popfifty(position_t*);
 
 /* Makes a move on a position */
 void makemove(position_t*, uint16_t);

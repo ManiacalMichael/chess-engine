@@ -44,19 +44,19 @@ const position_t START_POSITION = {
 		/* EMPTY */ 0x0000ffffffff0000
 	},
 	.capturestack = { 0 },
-	.capturetop = INT_MAX,
+	.capturetop = -1,
 	.epstack = { { 0 }, { 0 } },
-	.eptop = INT_MAX,
+	.eptop = -1,
 	.castles = { 0 },
 	.fiftymovestack = { 0 },
-	.fiftymovetop = INT_MAX,
+	.fiftymovetop = -1,
 	.flags = 0x8780u,
 	.halfmove = 0,
 	.fiftymove = 0
 };
 
 
-int popcount(uint64_t bb)
+inline int popcount(uint64_t bb)
 {
 	int x = 0;
 	for (x = 0; bb; ++x, bb &= bb - 1);
@@ -74,77 +74,49 @@ const int index64[64] = {
 	25, 14, 19,  9, 13,  8,  7,  6
 };
 
-int popfirst(uint64_t *bb)
+static const uint64_t mul = 0x03f79d71b4cb0a89;
+
+inline int popfirst(uint64_t *bb)
 {
-	static const uint64_t mul = 0x03f79d71b4cb0a89;
 	uint64_t b = (*bb ^ (*bb - 1)) & *bb;
 	*bb &= (*bb - 1);
 	return index64[(b * mul) >> 58];
 }
 
-int ls1bindice(uint64_t bb)
+inline int ls1bindice(uint64_t bb)
 {
-	static const uint64_t mul = 0x03f79d71b4cb0a89;
 	bb &= bb ^ (bb - 1);
 	return index64[(bb * mul) >> 58];
 }
 
-
-void pushcapture(position_t* posPtr, enum PIECES capture)
+inline void pushcapture(position_t* posPtr, enum PIECES capture)
 {
-	if (ISEMPTY(posPtr->capturetop))
-		posPtr->capturetop = 0;
-	else
-		++posPtr->capturetop;
-	posPtr->capturestack[posPtr->capturetop] = capture;
+	posPtr->capturestack[++posPtr->capturetop] = capture;
 }
 
-enum PIECES popcapture(position_t* posPtr)
+inline enum PIECES popcapture(position_t* posPtr)
 {
-	enum PIECES r = posPtr->capturestack[posPtr->capturetop];
-	if (!posPtr->capturetop)
-		SETEMPTY(posPtr->capturetop);
-	else
-		--posPtr->capturetop;
-	return r;
+	return posPtr->capturestack[posPtr->capturetop--];
 }
 
-void pushep(position_t* posPtr, enum SQUARES ep)
+inline void pushep(position_t* posPtr, enum SQUARES ep)
 {
-	if (ISEMPTY(posPtr->eptop))
-		posPtr->eptop = 0;
-	else
-		++posPtr->eptop;
-	posPtr->epstack[posPtr->eptop] = ep;
+	posPtr->epstack[++posPtr->eptop] = ep;
 }
 
-enum SQUARES popep(position_t* posPtr)
+inline enum SQUARES popep(position_t* posPtr)
 {
-	enum SQUARES r = posPtr->epstack[posPtr->eptop];
-	if (!posPtr->eptop)
-		SETEMPTY(posPtr->eptop);
-	else
-		--posPtr->eptop;
-	return r;
+	posPtr->epstack[posPtr->eptop--];
 }
 
-void pushfifty(position_t* posPtr, int counter)
+inline void pushfifty(position_t* posPtr, int counter)
 {
-	if (ISEMPTY(posPtr->fiftymovetop))
-		posPtr->fiftymovetop = 0;
-	else
-		++posPtr->fiftymovetop;
-	return posPtr->fiftymovestack[posPtr->fiftymovetop];
+	posPtr->fiftymovestack[++posPtr->fiftymovetop] = counter;
 }
 
-int popfifty(position_t* posPtr)
+inline int popfifty(position_t* posPtr)
 {
-	int r = posPtr->fiftymovestack[posPtr->fiftymovetop];
-	if (!posPtr->fiftymovetop)
-		SETEMPTY(posPtr->fiftymovetop);
-	else
-		--posPtr->fiftymovetop;
-	return r;
+	posPtr->fiftymovestack[posPtr->fiftymovetop--];
 }
 
 void make_move(position_t *posPtr, uint16_t mv)
