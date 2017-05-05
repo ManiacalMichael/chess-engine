@@ -117,7 +117,7 @@ inline void pushfifty(position_t *posPtr, int counter)
 
 inline int popfifty(position_t *posPtr)
 {
-	posPtr->fiftymovestack[posPtr->fiftymovetop--];
+	return posPtr->fiftymovestack[posPtr->fiftymovetop--];
 }
 
 void make_move(position_t *posPtr, uint16_t mv)
@@ -139,8 +139,8 @@ void make_move(position_t *posPtr, uint16_t mv)
 		pushfifty(posPtr, posPtr->fiftymove);
 		posPtr->fiftymove = 0;
 	}
-	switch (mv & MOVE_FLAGS) {
-	case CAPTURE_MOVE:
+	if (((mv & MOVE_FLAGS) >= CAPTURE_PROMO_TO_KNIGHT) ||
+	    ((mv & MOVE_FLAGS) == CAPTURE_MOVE)) {
 		pushfifty(posPtr, posPtr->fiftymove);
 		posPtr->fiftymove = 0;
 		for (int i = PAWN; i <= KING; ++i) {
@@ -172,7 +172,8 @@ void make_move(position_t *posPtr, uint16_t mv)
 				posPtr->castles[BS_CASTLE] = posPtr->moves;
 			break;
 		}
-		break;
+	}
+	switch (mv & MOVE_FLAGS) {
 	case DOUBLE_PAWN_PUSH:
 		posPtr->flags |= EN_PASSANT;
 		posPtr->flags |= color ? ((end + 8) << 1) : ((end - 8) << 1);
@@ -211,36 +212,36 @@ void make_move(position_t *posPtr, uint16_t mv)
 		switch (start) {
 		case S_A1:
 			posPtr->flags &= ~WHITE_LONG_CASTLE;
-			if (!(posPtr->castles[WL_CASTLE]))
+			if (!posPtr->castles[WL_CASTLE])
 				posPtr->castles[WL_CASTLE] = posPtr->moves;
 			break;
 		case S_E1:
 			posPtr->flags &= ~WHITE_BOTH_CASTLE;
-			if (!(posPtr->castles[WS_CASTLE]))
+			if (!posPtr->castles[WS_CASTLE])
 				posPtr->castles[WS_CASTLE] = posPtr->moves;
-			if (!(posPtr->castles[WL_CASTLE]))
+			if (!posPtr->castles[WL_CASTLE])
 				posPtr->castles[WL_CASTLE] = posPtr->moves;
 			break;
 		case S_H1:
 			posPtr->flags &= ~WHITE_SHORT_CASTLE;
-			if (!(posPtr->castles[WS_CASTLE]))
+			if (!posPtr->castles[WS_CASTLE])
 				posPtr->castles[WS_CASTLE] = posPtr->moves;
 			break;
 		case S_A8:
 			posPtr->flags &= ~BLACK_LONG_CASTLE;
-			if (!(posPtr->castles[BL_CASTLE]))
+			if (!posPtr->castles[BL_CASTLE])
 				posPtr->castles[BL_CASTLE] = posPtr->moves;
 			break;
 		case S_E8:
 			posPtr->flags &= ~BLACK_BOTH_CASTLE;
-			if (!(posPtr->castles[BS_CASTLE]))
+			if (!posPtr->castles[BS_CASTLE])
 				posPtr->castles[BS_CASTLE] = posPtr->moves;
-			if (!(posPtr->castles[BL_CASTLE]))
+			if (!posPtr->castles[BL_CASTLE])
 				posPtr->castles[BL_CASTLE] = posPtr->moves;
 			break;
 		case S_H8:
 			posPtr->flags &= ~BLACK_SHORT_CASTLE;
-			if (!(posPtr->castles[BS_CASTLE]))
+			if (!posPtr->castles[BS_CASTLE])
 				posPtr->castles[BS_CASTLE] = posPtr->moves;
 			break;
 		}
@@ -301,13 +302,15 @@ void unmake_move(position_t *posPtr, uint16_t mv)
 		popcapture(posPtr);
 		break;
 	case KNIGHT_CAPTURE_PROMOTION:
-	case KNIGHT_PROMOTION:
 	case BISHOP_CAPTURE_PROMOTION:
-	case BISHOP_PROMOTION:
 	case ROOK_CAPTURE_PROMOTION:
-	case ROOK_PROMOTION:
 	case QUEEN_CAPTURE_PROMOTION:
+		fiftyzeroed = 1;
+		posPtr->bboards[popcapture(posPtr)] ^= endbb;
 	case QUEEN_PROMOTION:
+	case KNIGHT_PROMOTION:
+	case BISHOP_PROMOTION:
+	case ROOK_PROMOTION:
 		piece = PAWN;
 		break;
 	}
