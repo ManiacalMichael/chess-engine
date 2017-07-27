@@ -120,7 +120,7 @@ inline int popfifty(position_t *posPtr)
 	return posPtr->fiftymovestack[posPtr->fiftymovetop--];
 }
 
-void make_move(position_t *posPtr, uint16_t mv)
+void makemove(position_t *posPtr, uint16_t mv)
 {
 	enum SQUARES start = mv & START_SQUARE;
 	uint64_t startbb = 1ull << start;
@@ -265,7 +265,7 @@ void make_move(position_t *posPtr, uint16_t mv)
 	posPtr->flags ^= WHITE_TO_MOVE;
 }
 
-void unmake_move(position_t *posPtr, uint16_t mv)
+void unmakemove(position_t *posPtr, uint16_t mv)
 {
 	enum SQUARES start = mv & START_SQUARE;
 	uint64_t startbb = 1ull << start;

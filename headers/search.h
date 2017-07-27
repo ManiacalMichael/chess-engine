@@ -2,7 +2,7 @@
 #define INCLUDE_SEARCH_H
 
 #include <stdint.h>
-#include "headers/chess.h"
+#include "chess.h"
 
 /* Recursively calculates the number of movepaths from the specified position
  * to the given depth

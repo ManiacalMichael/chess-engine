@@ -834,6 +834,9 @@ const uint64_t pawn_attacks[2][64] = {
 	}
 };
 
+/* these functions are only used for attack table initialization
+ * and should not be visible anywhere except in this file
+ */
 uint64_t genindex(int index, int bits, uint64_t mask)
 {
 	int i, j;
@@ -844,36 +847,6 @@ uint64_t genindex(int index, int bits, uint64_t mask)
 		if (index & (1 << i))
 			result |= (1ull << j);
 	}
-	return result;
-}
-
-uint64_t rmask(int sq)
-{
-	uint64_t result = 0ull;
-	int rank = sq / 8, file = sq % 8, r = 0, f = 0;
-	for (r = rank + 1; r <= 6; ++r)
-		result |= (1ull << (file + r * 8));
-	for (r = rank - 1; r >= 1; --r)
-		result |= (1ull << (file + r * 8));
-	for (f = file + 1; f <= 6; ++f)
-		result |= (1ull << (f + rank * 8));
-	for (f = file - 1; f >= 1; --f)
-		result |= (1ull << (f + rank * 8));
-	return result;
-}
-
-uint64_t bmask(int sq)
-{
-	uint64_t result = 0ull;
-	int rank = sq / 8, file = sq % 8, r = 0, f = 0;
-	for (r = rank + 1, f = file + 1; r <= 6 && f <= 6; ++r, ++f)
-		result |= (1ull << (f + r * 8));
-	for (r = rank + 1, f = file - 1; r <= 6 && f >= 1; ++r, --f)
-		result |= (1ull << (f + r * 8));
-	for (r = rank - 1, f = file + 1; r >= 1 && f <= 6; --r, ++f)
-		result |= (1ull << (f + r * 8));
-	for (r = rank - 1, f = file - 1; r >= 1 && f >= 1; --r, --f)
-		result |= (1ull << (f + r * 8));
 	return result;
 }
 
@@ -922,8 +895,9 @@ uint64_t batt(int sq, uint64_t block)
 	}
 	return result;
 }
+/***/
 
-void init_attack_table()
+void init_attack_table(void)
 {
 	uint64_t mask, block[4096], magic;
 	uint64_t *attack;
@@ -931,7 +905,7 @@ void init_attack_table()
 	for (i = 0; i < 82688; ++i)
 		attack_table[i] = 0;
 	for (j = 0; j < 64; ++j) {
-		mask = rmask(j);
+		mask = rook_masks[j];
 		mbits = popcount(mask);
 		attack = attack_table + rook_index[j];
 		for (i = 0; i < (1 << mbits); ++i) 
@@ -940,7 +914,7 @@ void init_attack_table()
 			attack[i] = ratt(j, block[i]);
 	}
 	for (j = 0; j < 64; ++j) {
-		mask = bmask(j);
+		mask = bishop_masks[j];
 		mbits = popcount(mask);
 		attack = attack_table + bishop_index[j];
 		for (i = 0; i < (1 << mbits); ++i) 
@@ -951,7 +925,7 @@ void init_attack_table()
 	
 }
 
-uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
+uint64_t pawn_moves(uint64_t enemy, uint64_t empty, enum PIECES color, enum SQUARES sq)
 {
 	uint64_t r = 0ull;
 	if ((sq / 8) == (color ? 6 : 1)) {
@@ -963,100 +937,54 @@ uint64_t pawn_moves(uint64_t enemy, uint64_t empty, int color, int sq)
 	return r;
 }
 
-uint64_t bishop_moves(uint64_t occupied, int rank, int file)
+inline uint64_t bishop_moves(uint64_t occupied, enum SQUARES sq)
+{
+	return attack_table[(((occupied & bishop_masks[sq]) * bishop_magics[sq]) >> 55) + bishop_index[sq]];
+}
+
+inline uint64_t rook_moves(uint64_t occupied, enum SQUARES sq)
+{
+	return attack_table[(((occupied & rook_masks[sq]) * rook_magics[sq]) >> 52) + rook_index[sq]];
+}
+
+inline uint64_t queen_moves(uint64_t occupied, enum SQUARES sq)
 {
 	uint64_t r = 0ull;
-	uint64_t diagonal = diagonal_masks[(7 + rank) - file];
-	uint64_t antidiagonal = antidiagonal_masks[rank + file];
-	/* 
-	 * Actually, shift down by 56 gives the key, but the key is then
-	 * multiplied by 8, and shifted down by one to ignore the occupancy 
-	 * of the edge square
-	 */
-	uint64_t key = (((diagonal & occupied) * FILL_MULTIPLIER) >> 54) & OUTER_SQ_MASK;
-	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & diagonal;
-	key = (((antidiagonal & occupied) * FILL_MULTIPLIER) >> 54) & OUTER_SQ_MASK;
-	r |= (sliding_attack_lookups[key + file] * FILL_MULTIPLIER) & antidiagonal;
+	r |= bishop_moves(occupied, sq);
+	r |= rook_moves(occupied, sq);
 	return r;
 }
 
-uint64_t rook_moves(uint64_t occupied, int rank, int file)
+uint16_t check_status(const position_t pos)
 {
-	uint64_t r = 0ull;
-	uint64_t key = (occupied & rank_masks[rank]) >> (8 * rank);
-	key <<= 2;
-	key &= OUTER_SQ_MASK;
-	/* processor will do 8-bit shift if no cast */
-	r |= (uint64_t)sliding_attack_lookups[key + file] << (8 * rank);
-	key = ((occupied & file_masks[file]) >> file) * MAIN_ANTIDIAGONAL;
-	key >>= 54;
-	key &= OUTER_SQ_MASK;
-	key = sliding_attack_lookups[key + rank] * MAIN_ANTIDIAGONAL;
-	r |= (key >> (7 - file)) & file_masks[file];
-	return r;
-}
-
-uint64_t queen_moves(uint64_t occupied, int rank, int file)
-{
-	uint64_t r = 0ull;
-	r |= bishop_moves(occupied, rank, file);
-	r |= rook_moves(occupied, rank, file);
-	return r;
-}
-
-uint16_t check_status(const struct position_t pos)
-{
-	uint64_t occupied = pos.occupied;
+	const uint64_t occupied = pos.bboards[OCCUPIED];
 	uint16_t ret = 0;
-	int brank = pos.kingpos[BLACK] / 8;
-	int bfile = pos.kingpos[BLACK] % 8;
-	int wrank = pos.kingpos[WHITE] / 8;
-	int wfile = pos.kingpos[WHITE] % 8;
-	if (rook_moves(occupied, wrank, wfile) & (pos.pieces[BLACK][ROOK]
-				| pos.pieces[BLACK][QUEEN])) {
+	int bsq = ls1bindice(pos.bboards[BLACK_KING]);
+	int wsq = ls1bindice(pos.bboards[WHITE_KING]);
+	if (rook_moves(occupied, wsq) & (pos.bboards[BLACK_ROOK] | pos.bboards[BLACK_QUEEN]))
 		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (bishop_moves(occupied, wrank, wfile) & (pos.pieces[BLACK][BISHOP]
-				| pos.pieces[BLACK][QUEEN])) {
+	else if (bishop_moves(occupied, wsq) & (pos.bboards[BLACK_BISHOP] | pos.bboards[BLACK_QUEEN]))
 		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (knight_attack_lookups[pos.kingpos[WHITE]] &
-				pos.pieces[BLACK][KNIGHT]) {
+	else if (knight_attacks[wsq] & pos.bboards[BLACK_KNIGHT])
 		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (pawn_attacks[WHITE][pos.kingpos[WHITE]]
-				& pos.pieces[BLACK][PAWN]) {
+	else if (pawn_attacks[WHITE][wsq] & pos.bboards[BLACK_PAWN])
 		ret |= WHITE_CHECK;
-		goto test_black;
-	} else if (king_attack_lookups[pos.kingpos[WHITE]]
-				& pos.pieces[BLACK][KING]) {
-		ret |= WHITE_CHECK;
-	}
-test_black:
-	if (rook_moves(occupied, brank, bfile) & (pos.pieces[WHITE][ROOK]
-				| pos.pieces[WHITE][QUEEN])) {
+	else if (king_attacks[wsq] & pos.bboards[BLACK_KING])
+		return WHITE_CHECK | BLACK_CHECK;
+	if (rook_moves(occupied, bsq) & (pos.bboards[WHITE_ROOK] | pos.bboards[WHITE_QUEEN]))
 		ret |= BLACK_CHECK;
-		return ret;
-	} else if (bishop_moves(occupied, brank, bfile) & (pos.pieces[WHITE][BISHOP]
-				| pos.pieces[WHITE][QUEEN])) {
+	else if (bishop_moves(occupied, bsq) & (pos.bboards[WHITE_BISHOP] | pos.bboards[WHITE_QUEEN]))
 		ret |= BLACK_CHECK;
-		return ret;
-	} else if (knight_attack_lookups[pos.kingpos[BLACK]]
-				& pos.pieces[WHITE][KNIGHT]) {
+	else if (knight_attacks[bsq] & pos.bboards[WHITE_KNIGHT])
 		ret |= BLACK_CHECK;
-		return ret;
-	} else if (pawn_attacks[BLACK][pos.kingpos[BLACK]]
-				& pos.pieces[WHITE][PAWN]) {
+	else if (pawn_attacks[BLACK][bsq] & pos.bboards[WHITE_PAWN])
 		ret |= BLACK_CHECK;
-		return ret;
-	} else if (king_attack_lookups[pos.kingpos[BLACK]]
-				& pos.pieces[WHITE][KING]) {
-		ret |= BLACK_CHECK;
-	}
+	else if (king_attacks[bsq] & pos.bboards[WHITE_KING])
+		return WHITE_CHECK | BLACK_CHECK;
 	return ret;
 }
 
-uint64_t castle_moves(struct position_t pos)
+uint64_t castle_moves(position_t pos)
 {
 	uint64_t attk = 0ull;
 	uint64_t empty = pos.empty;
@@ -1083,15 +1011,14 @@ uint64_t castle_moves(struct position_t pos)
 	return attk;
 }
 
-void serialize_moves(int start, uint64_t attk, const struct position_t pos,
-		uint16_t *lsPtr)
+void serialize_moves(int start, uint64_t attk, position_t pos,
+		movels_t *lsPtr)
 {
 	int color = (pos.flags & WHITE_TO_MOVE) ? WHITE : BLACK;
-	int length = lsPtr[0];
 	uint64_t startbb = 1ull << start;
-	int end;
+	enum SQUARES end;
 	uint64_t endbb;
-	int pt;
+	enum PIECETYPES pt;
 	uint16_t tmp;
 	assert(startbb & pos.pieces[color][0]);
 	if (attk == 0)
@@ -1106,7 +1033,7 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 		end = ls1bindice(attk);
 		endbb = 1ull << end;
 		attk &= attk - 1;
-		++length;
+		++lsPtr->top;
 		tmp = start | (end << 6);
 		if (pos.occupied & endbb)
 			tmp |= CAPTURE_MOVE;
@@ -1122,9 +1049,9 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 				break;
 			}
 			if ((end / 8) == (color ? RANK_1 : RANK_8)) {
-				lsPtr[length++] = tmp | KNIGHT_PROMOTION;
-				lsPtr[length++] = tmp | BISHOP_PROMOTION;
-				lsPtr[length++] = tmp | ROOK_PROMOTION;
+				lsPtr->list[lsPtr->top++] = tmp | KNIGHT_PROMOTION;
+				lsPtr->list[lsPtr->top++] = tmp | BISHOP_PROMOTION;
+				lsPtr->list[lsPtr->top++] = tmp | ROOK_PROMOTION;
 				tmp |= QUEEN_PROMOTION;
 				break;
 			}
@@ -1138,21 +1065,23 @@ void serialize_moves(int start, uint64_t attk, const struct position_t pos,
 				tmp |= QUEENSIDE_CASTLE;
 			break;
 		}
-		lsPtr[length] = tmp;
+		lsPtr->list[lsPtr->top] = tmp;
 	}
-	lsPtr[0] = length;
 }
 
-void generate_moves(const struct position_t pos, uint16_t *lsPtr)
+void generate_moves(const position_t pos, movels_t *lsPtr)
 {
 	int color = (pos.flags & WHITE_TO_MOVE) ? WHITE : BLACK;
-	int sq = 0;
+	enum SQUARES sq = 0;
 	uint64_t pbb = 0;
 	uint64_t attk = 0;
-	uint64_t enemy = pos.pieces[BLACK - color][0];
-	uint64_t friendly = pos.pieces[color][0];
-	pbb = pos.pieces[color][PAWN];
+	uint64_t enemy = pos.bboards[BLACK - color];
+	uint64_t friendly = pos.bboards[color];
+	pbb = pos.bboards[color + (PAWN * 2)];
 	if (pos.flags & EN_PASSANT)
+		/* temporarily place an enemy piece on the e.p. square
+		 * so pawns can capture it
+		 */
 		enemy ^= 1ull << (pos.flags & EP_SQUARE);
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
@@ -1163,39 +1092,39 @@ void generate_moves(const struct position_t pos, uint16_t *lsPtr)
 	}
 	if (pos.flags & EN_PASSANT)
 		enemy ^= 1ull << (pos.flags & EP_SQUARE);
-	pbb = pos.pieces[color][BISHOP];
+	pbb = pos.pieces[color + (BISHOP * 2)];
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
-		attk = bishop_moves(pos.occupied, sq / 8, sq % 8);
+		attk = bishop_moves(pos.bboards[OCCUPIED], sq);
 		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
-	pbb = pos.pieces[color][KNIGHT];
+	pbb = pos.pieces[color + (KNIGHT * 2)];
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
-		attk = knight_attack_lookups[sq];
+		attk = knight_attacks[sq];
 		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
-	pbb = pos.pieces[color][ROOK];
+	pbb = pos.pieces[color + (ROOK * 2)];
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
-		attk = rook_moves(pos.occupied, sq / 8, sq % 8);
+		attk = rook_moves(pos.occupied, sq);
 		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
-	pbb = pos.pieces[color][QUEEN];
+	pbb = pos.pieces[color + (QUEEN * 2)];
 	while (pbb != 0) {
 		sq = ls1bindice(pbb);
-		attk = queen_moves(pos.occupied, sq / 8, sq % 8);
+		attk = queen_moves(pos.occupied, sq);
 		attk &= ~friendly;
 		serialize_moves(sq, attk, pos, lsPtr);
 		pbb &= pbb - 1;
 	}
-	sq = pos.kingpos[color];
+	sq = ls1bindice(pos.bboards[color + (2 * KING)];
 	attk = king_attack_lookups[sq];
 	attk &= ~friendly;
 	serialize_moves(sq, attk, pos, lsPtr);
